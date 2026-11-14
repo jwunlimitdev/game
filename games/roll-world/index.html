@@ -3,56 +3,62 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>굴려라! 별공</title>
+<title>굴려라! 별공 3D</title>
 <style>
-:root{color-scheme:dark;--ink:#f8f6ff;--muted:#b7b3d5;--panel:#17152b}
-*{box-sizing:border-box}body{margin:0;background:#09091a;color:var(--ink);font-family:system-ui,-apple-system,sans-serif;overflow:hidden}
-#app{height:100dvh;display:flex;flex-direction:column;max-width:1100px;margin:auto;padding:12px;gap:10px}
-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-h1{font-size:clamp(20px,4vw,30px);margin:0;letter-spacing:-1px}.sub{font-size:12px;color:var(--muted)}
-.stats{display:flex;gap:8px}.stat{background:#17152b;border:1px solid #302b50;border-radius:12px;padding:7px 12px;min-width:75px;text-align:center}.stat b{display:block;font-size:18px}.stat small{color:var(--muted);font-size:10px}
-#stage{position:relative;flex:1;min-height:240px;border:1px solid #39325f;border-radius:18px;overflow:hidden;background:#15172b;box-shadow:0 12px 45px #0008}
-canvas{display:block;width:100%;height:100%;touch-action:none}
-#overlay{position:absolute;inset:0;display:grid;place-items:center;background:#09091acc;text-align:center;padding:20px}
-#panel{max-width:440px;background:#17152b;border:1px solid #49406e;border-radius:20px;padding:24px;box-shadow:0 18px 55px #0009}
-#panel h2{font-size:28px;margin:0 0 8px}#panel p{color:var(--muted);line-height:1.6;margin:8px 0 18px}
-button{border:0;border-radius:12px;background:#a78bfa;color:#17102d;font-weight:800;padding:12px 20px;font-size:15px;cursor:pointer}button:active{transform:scale(.97)}
-#bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--muted);font-size:12px}
-#pad{display:none;gap:6px;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,38px)}
-#pad button{padding:0;background:#292442;color:white;border:1px solid #514776;touch-action:none}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080b19;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;max-width:1200px;margin:auto;padding:10px;gap:8px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}h1{font-size:clamp(19px,4vw,29px);margin:0}.sub{font-size:11px;color:#aeb8d6}
+.stats{display:flex;gap:6px}.stat{background:#171e38;border:1px solid #303d65;border-radius:11px;padding:6px 10px;min-width:68px;text-align:center}.stat b{display:block;font-size:18px}.stat small{font-size:10px;color:#aeb8d6}
+#stage{position:relative;flex:1;min-height:250px;overflow:hidden;border:1px solid #34436d;border-radius:17px;background:linear-gradient(#111b39,#26365b)}
+#view{width:100%;height:100%;display:block;touch-action:none}
+#overlay{position:absolute;inset:0;display:grid;place-items:center;background:#070b1dcc;text-align:center;padding:18px}
+#panel{max-width:430px;background:#151d38ed;border:1px solid #596b9c;border-radius:20px;padding:22px;box-shadow:0 18px 60px #0009}
+#panel h2{font-size:27px;margin:0 0 8px}#panel p{color:#c0cbe7;line-height:1.65;font-size:14px}
+button{border:0;border-radius:12px;background:#a8e4ff;color:#10203c;font-weight:850;padding:12px 22px;font-size:15px;cursor:pointer}
+#bottom{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#aeb8d6;font-size:11px}
+#pad{display:none;grid-template-columns:repeat(3,43px);grid-template-rows:repeat(2,35px);gap:5px}#pad button{padding:0;background:#26385f;color:white;border:1px solid #6279aa;touch-action:none}
 @media(pointer:coarse){#pad{display:grid}#bottom .help{display:none}}
 </style>
 </head>
-<body>
-<div id="app">
-<header><div><h1>🪐 굴려라! 별공</h1><div class="sub">작은 물건부터 모아 더 큰 별공으로 성장하자!</div></div>
-<div class="stats"><div class="stat"><b id="score">0</b><small>점수</small></div><div class="stat"><b id="size">1.0</b><small>별공 크기</small></div><div class="stat"><b id="time">90</b><small>남은 시간</small></div></div></header>
-<div id="stage"><canvas id="game"></canvas><div id="overlay"><div id="panel"><h2>별공을 굴려라!</h2><p>방향키 또는 WASD로 움직이세요.<br>별공보다 작은 물건은 가까이 가면 달라붙어요.<br>작은 물건부터 모아 점점 크게 성장하세요!</p><button id="start">게임 시작</button></div></div></div>
-<div id="bottom"><span class="help">이동: 방향키 / WASD · 다시 시작: R</span><div id="pad"><span></span><button data-dir="up">▲</button><span></span><button data-dir="left">◀</button><button data-dir="down">▼</button><button data-dir="right">▶</button></div><span>✨ 목표: 제한 시간 안에 최고 점수!</span></div>
+<body><div id="app">
+<header><div><h1>🪐 굴려라! 별공 3D</h1><div class="sub">입체 세계를 누비며 물건을 모아 거대한 별공으로 성장!</div></div>
+<div class="stats"><div class="stat"><b id="score">0</b><small>점수</small></div><div class="stat"><b id="size">1.0</b><small>크기</small></div><div class="stat"><b id="time">90</b><small>남은 시간</small></div></div></header>
+<div id="stage"><div id="view"></div><div id="overlay"><div id="panel"><h2>별공을 굴려라!</h2><p>WASD 또는 방향키로 3D 공간을 이동하세요.<br>나보다 작은 물건에 가까이 가면 흡수합니다.<br>작은 물건부터 모아 점점 크게 성장하세요!</p><button id="start">게임 시작</button></div></div></div>
+<div id="bottom"><span class="help">이동: WASD / 방향키 · 다시 시작: R</span><div id="pad"><span></span><button data-dir="up">▲</button><span></span><button data-dir="left">◀</button><button data-dir="down">▼</button><button data-dir="right">▶</button></div><span>✨ 목표: 90초 안에 최고 점수!</span></div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
-(()=>{
-const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),stage=document.querySelector('#stage');
-const ui={score:document.querySelector('#score'),size:document.querySelector('#size'),time:document.querySelector('#time'),overlay:document.querySelector('#overlay'),panel:document.querySelector('#panel')};
-let W=900,H=560,dpr=1,player,items=[],keys={},touch={},score=0,time=90,running=false,last=0,spawn=0,raf=0;
-const colors=['#ff8fab','#ffd166','#8bd3dd','#c3a6ff','#95e1a3','#ffad69','#a0c4ff'];
-function resize(){const r=stage.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
-new ResizeObserver(resize).observe(stage);resize();
-function rand(a,b){return a+Math.random()*(b-a)}
-function makeItem(){const size=rand(5,17);return{x:rand(25,W-25),y:rand(25,H-25),r:size,color:colors[Math.floor(Math.random()*colors.length)],kind:['●','◆','★','■','✿'][Math.floor(Math.random()*5)],spin:rand(0,6.2)}}
-function reset(){player={x:W/2,y:H/2,r:13,vx:0,vy:0,parts:[]};items=Array.from({length:85},makeItem);score=0;time=90;spawn=0;updateUI()}
-function updateUI(){ui.score.textContent=score;ui.size.textContent=(player.r/13).toFixed(1);ui.time.textContent=Math.ceil(time)}
+(()=> {
+const host=document.querySelector('#view'),stage=document.querySelector('#stage'),ui={score:document.querySelector('#score'),size:document.querySelector('#size'),time:document.querySelector('#time'),overlay:document.querySelector('#overlay'),panel:document.querySelector('#panel')};
+if(!window.THREE){ui.panel.innerHTML='<h2>3D 엔진을 불러오지 못했어요</h2><p>인터넷 연결을 확인한 뒤 다시 접속해 주세요.</p><button onclick="location.reload()">새로고침</button>';return}
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x172447);scene.fog=new THREE.Fog(0x172447,32,85);
+const camera=new THREE.PerspectiveCamera(58,1,.1,180);camera.position.set(0,12,17);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;host.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xb9dcff,0x34405c,2));
+const sun=new THREE.DirectionalLight(0xfff0cf,2.3);sun.position.set(-12,22,10);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(100,100),new THREE.MeshStandardMaterial({color:0x26385b,roughness:.9}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const grid=new THREE.GridHelper(100,50,0x6681b5,0x405477);grid.position.y=.012;scene.add(grid);
+const boundary=new THREE.Mesh(new THREE.BoxGeometry(44,.35,44),new THREE.MeshStandardMaterial({color:0x334d78,wireframe:true,transparent:true,opacity:.28}));boundary.position.set(0,.1,0);scene.add(boundary);
+const playerMat=new THREE.MeshStandardMaterial({color:0xf5bd54,metalness:.22,roughness:.25});
+const player=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),playerMat);player.castShadow=true;player.position.y=1;scene.add(player);
+const shine=new THREE.Mesh(new THREE.SphereGeometry(.17,16,12),new THREE.MeshBasicMaterial({color:0xfff6c9}));shine.position.set(-.3,.42,.82);player.add(shine);
+const eyes=new THREE.Group();player.add(eyes);for(const x of [-.25,.25]){const e=new THREE.Mesh(new THREE.SphereGeometry(.09,12,10),new THREE.MeshBasicMaterial({color:0x30223a}));e.position.set(x,.16,.91);eyes.add(e)}
+const mats=[0xff8fab,0xffd166,0x8bd3dd,0xc3a6ff,0x95e1a3,0xffad69,0xa0c4ff].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.38,metalness:.12}));
+const geometries=[new THREE.DodecahedronGeometry(1,0),new THREE.BoxGeometry(1.5,1.5,1.5),new THREE.ConeGeometry(.85,1.6,6),new THREE.TorusKnotGeometry(.55,.18,40,8)];
+let items=[],keys={},touch={},score=0,time=90,running=false,last=0,raf=0,vel=new THREE.Vector3(),worldSize=1;
+function resize(){const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(host);resize();
+function makeItem(){const r=.28+Math.random()*.48,geo=geometries[Math.floor(Math.random()*geometries.length)],mesh=new THREE.Mesh(geo,mats[Math.floor(Math.random()*mats.length)]);mesh.scale.setScalar(r);mesh.position.set((Math.random()-.5)*39,r,(Math.random()-.5)*39);mesh.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);items.push({mesh,r,spin:.3+Math.random()})}
+function updateUI(){ui.score.textContent=score.toLocaleString();ui.size.textContent=worldSize.toFixed(1);ui.time.textContent=Math.ceil(time)}
+function reset(){for(const o of items)scene.remove(o.mesh);items=[];for(let i=0;i<100;i++)makeItem();player.position.set(0,1,0);player.scale.setScalar(1);player.rotation.set(0,0,0);vel.set(0,0,0);worldSize=1;score=0;time=90;updateUI()}
 function start(){cancelAnimationFrame(raf);reset();running=true;ui.overlay.style.display='none';last=performance.now();raf=requestAnimationFrame(loop)}
-function end(){running=false;ui.overlay.style.display='grid';ui.panel.innerHTML='<h2>🏁 게임 종료!</h2><p>최종 점수 <b>'+score.toLocaleString()+'</b>점<br>별공 크기 <b>'+(player.r/13).toFixed(1)+'</b>배<br><br>'+ (score>=1800?'대단해요! 별공 마스터!':score>=800?'멋진 수집 실력이에요!':'다음엔 더 크게 키워봐요!')+'</p><button id="again">다시 도전</button>';document.querySelector('#again').onclick=start}
-function loop(now){if(!running)return;const dt=Math.min((now-last)/1000,.035);last=now;time-=dt;if(time<=0){time=0;updateUI();end();return}update(dt);draw();updateUI();raf=requestAnimationFrame(loop)}
-function update(dt){let ax=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0)+(touch.right?1:0)-(touch.left?1:0),ay=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0)+(touch.down?1:0)-(touch.up?1:0);let m=Math.hypot(ax,ay)||1;ax/=m;ay/=m;const speed=190/(1+player.r/100);player.vx+=(ax*speed-player.vx)*Math.min(1,dt*7);player.vy+=(ay*speed-player.vy)*Math.min(1,dt*7);player.x+=player.vx*dt;player.y+=player.vy*dt;player.x=Math.max(player.r,Math.min(W-player.r,player.x));player.y=Math.max(player.r,Math.min(H-player.r,player.y));
-for(let i=items.length-1;i>=0;i--){let o=items[i],dx=o.x-player.x,dy=o.y-player.y,d=Math.hypot(dx,dy);if(d<player.r+o.r*.45&&o.r<player.r*.92){player.parts.push({x:dx,y:dy,r:o.r,color:o.color,kind:o.kind});player.r=Math.min(92,Math.sqrt(player.r*player.r+o.r*o.r*.28));score+=Math.round(o.r*10);items.splice(i,1)}}
-player.parts=player.parts.slice(-80);spawn+=dt;if(spawn>1.2&&items.length<100){items.push(makeItem());spawn=0}}
-function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#171a30';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#ffffff0b';ctx.lineWidth=1;for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
-for(const o of items){ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.spin);ctx.fillStyle=o.color;ctx.shadowColor=o.color;ctx.shadowBlur=8;ctx.beginPath();ctx.arc(0,0,o.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#201a35';ctx.font=Math.max(8,o.r*1.25)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.kind,0,1);ctx.restore()}
-ctx.save();ctx.translate(player.x,player.y);for(let i=0;i<player.parts.length;i++){const p=player.parts[i],a=Math.atan2(p.y,p.x),d=Math.min(player.r*.72,Math.hypot(p.x,p.y));ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(Math.cos(a)*d,Math.sin(a)*d,Math.max(3,p.r*.48),0,Math.PI*2);ctx.fill()}let g=ctx.createRadialGradient(-player.r*.35,-player.r*.4,2,0,0,player.r);g.addColorStop(0,'#fff6c7');g.addColorStop(.35,'#f4c95d');g.addColorStop(1,'#d77a35');ctx.fillStyle=g;ctx.shadowColor='#ffc66d';ctx.shadowBlur=18;ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#3d2440';ctx.font=Math.max(12,player.r*.8)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',0,1);ctx.restore()}
-document.querySelector('#start').onclick=start;addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(k))e.preventDefault();keys[k]=true;if(k==='r'&&!running)start()});addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false});document.querySelectorAll('#pad button').forEach(b=>{const d=b.dataset.dir;const on=e=>{e.preventDefault();touch[d]=true},off=e=>{e.preventDefault();touch[d]=false};b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointerleave',off);b.addEventListener('pointercancel',off)});reset();draw();
+function end(){running=false;ui.overlay.style.display='grid';ui.panel.innerHTML='<h2>🏁 게임 종료!</h2><p>최종 점수 <b>'+score.toLocaleString()+'</b>점<br>최종 크기 <b>'+worldSize.toFixed(1)+'</b>배<br><br>'+(score>1800?'대단해요! 별공 마스터!':score>700?'멋진 수집 실력이에요!':'다음엔 더 크게 키워봐요!')+'</p><button id="again">다시 도전</button>';document.querySelector('#again').onclick=start}
+function loop(now){if(!running)return;const dt=Math.min((now-last)/1000,.04);last=now;time-=dt;if(time<=0){time=0;updateUI();end();return}update(dt);renderer.render(scene,camera);updateUI();raf=requestAnimationFrame(loop)}
+function update(dt){let x=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0)+(touch.right?1:0)-(touch.left?1:0),z=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0)+(touch.down?1:0)-(touch.up?1:0);const len=Math.hypot(x,z)||1;x/=len;z/=len;const speed=10/(1+worldSize*.12);vel.x+=(x*speed-vel.x)*Math.min(1,dt*6);vel.z+=(z*speed-vel.z)*Math.min(1,dt*6);player.position.x=THREE.MathUtils.clamp(player.position.x+vel.x*dt,-21+worldSize,21-worldSize);player.position.z=THREE.MathUtils.clamp(player.position.z+vel.z*dt,-21+worldSize,21-worldSize);player.position.y=worldSize;player.rotation.z-=vel.x*dt/worldSize;player.rotation.x+=vel.z*dt/worldSize;
+for(let i=items.length-1;i>=0;i--){const o=items[i];o.mesh.rotation.y+=o.spin*dt;const d=player.position.distanceTo(o.mesh.position);if(o.r<worldSize*.88&&d<worldSize+o.r*.8){scene.remove(o.mesh);items.splice(i,1);score+=Math.round(o.r*100);worldSize=Math.min(4.8,Math.sqrt(worldSize*worldSize+o.r*o.r*.18));player.scale.setScalar(worldSize)}}
+while(items.length<100)makeItem();
+const target=new THREE.Vector3(player.position.x+vel.x*.3,player.position.y+worldSize*5+5,player.position.z+worldSize*7+8);camera.position.lerp(target,Math.min(1,dt*3));camera.lookAt(player.position.x,worldSize*.45,player.position.z)}
+document.querySelector('#start').onclick=start;addEventListener('keydown',e=>{let k=e.key.length===1?e.key.toLowerCase():e.key;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(k))e.preventDefault();keys[k]=true;if(k==='r'&&!running)start()});addEventListener('keyup',e=>{let k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false});
+document.querySelectorAll('#pad button').forEach(b=>{const d=b.dataset.dir;const on=e=>{e.preventDefault();touch[d]=true},off=e=>{e.preventDefault();touch[d]=false};b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointerleave',off);b.addEventListener('pointercancel',off)});
+reset();renderer.render(scene,camera);
 })();
-</script>
-</body>
-</html>
+</script></body></html>
