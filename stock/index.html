@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REWUNG STOCK MARKET</title>
+<style>
+:root{--bg:#0b1020;--panel:#141d32;--line:#293752;--text:#edf3ff;--muted:#91a2c1;--green:#35d39a;--red:#ff6b7a;--blue:#72a7ff}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(135deg,#0b1020,#101a30);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;min-height:100vh}
+header{padding:24px 5vw 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+h1{font-size:clamp(22px,4vw,30px);margin:0;letter-spacing:.5px}
+.sub{color:var(--muted);font-size:13px;margin-top:5px}
+.head-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pill{border:1px solid #365078;background:#172944;color:#b9d2ff;padding:7px 12px;border-radius:999px;font-size:12px}
+.save-state{font-size:11px;color:var(--muted)}
+main{max-width:1200px;margin:24px auto;padding:0 18px 48px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.card,.panel{background:rgba(20,29,50,.96);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 10px 28px #0002}
+.stat-label{font-size:12px;color:var(--muted)}
+.stat-value{font-size:clamp(17px,2.6vw,24px);font-weight:750;margin-top:7px;white-space:nowrap}
