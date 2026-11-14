@@ -186,7 +186,7 @@ th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--pan
  </section>
 
  <section class="panel">
-  <h2>🎡 행운의 돌림판 <span class="muted" style="font-size:12px;font-weight:500">거래일마다 1회 무료</span></h2>
+  <h2>🎡 행운의 돌림판 <span class="muted" style="font-size:12px;font-weight:500">30거래일마다 1회 무료</span></h2>
   <div class="wheel-wrap">
    <div class="wheel-ptr"></div>
    <canvas id="wheel" width="560" height="560"></canvas>
@@ -791,19 +791,29 @@ function drawWheel(){
  ctx.restore();
 }
 
+/* 무료 기회는 30거래일에 1번, '한 번 더'로 얻은 기회는 쿨다운과 상관없이 사용 */
+const SPIN_COOLDOWN=30;
+
+function spinCooldownLeft(){
+ if(lastSpinDay===0)return 0;
+ return Math.max(0,SPIN_COOLDOWN-(day-lastSpinDay));
+}
+
 function updateSpinUI(){
- const usedToday=lastSpinDay===day;
- $("spinBtn").disabled=spinning||(usedToday&&extraSpins===0);
- if(!usedToday)$("spinInfo").textContent=`오늘의 무료 기회 1회${extraSpins?` · 추가 ${extraSpins}회`:""}`;
- else if(extraSpins>0)$("spinInfo").textContent=`추가 기회 ${extraSpins}회 남음`;
- else $("spinInfo").textContent="오늘 기회를 모두 사용했습니다";
+ const left=spinCooldownLeft();
+ $("spinBtn").disabled=spinning||(left>0&&extraSpins===0);
+ const extra=extraSpins?` · 추가 ${extraSpins}회`:"";
+ $("spinInfo").textContent=left===0
+   ?`지금 돌릴 수 있어요${extra}`
+   :`다음 돌림판까지 ${left}거래일${extra}`;
 }
 
 function spin(){
  if(spinning)return;
- if(lastSpinDay!==day){lastSpinDay=day;}
+ const cooldownLeft=spinCooldownLeft();
+ if(cooldownLeft===0){lastSpinDay=day;}
  else if(extraSpins>0){extraSpins--;}
- else{toast("오늘의 돌림판 기회를 모두 사용했습니다.");return;}
+ else{toast(`돌림판은 ${cooldownLeft}거래일 뒤에 다시 돌릴 수 있어요.`);return;}
 
  spinning=true;
  $("spinResult").textContent="돌아가는 중...";
