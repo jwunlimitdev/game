@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>튕기기</title>
+<style>
+  :root{
+    --bg: #0d0f1a;
+    --bg2: #171c2e;
+    --wall: #2a3152;
+    --paddle: #ffd166;
+    --paddle2: #ff9f1c;
+    --text: #f4f7fb;
+    --dim: #7c86a8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: radial-gradient(ellipse at 50% -10%, #1c2340 0%, #0d0f1a 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", sans-serif;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #wrap {
+    display: flex; flex-direction: column; align-items: center;
+    height: 100%;
+    padding: env(safe-area-inset-top, 10px) 10px env(safe-area-inset-bottom, 10px);
+    justify-content: center;
+    gap: 10px;
+  }
+  #hud {
+    width: 100%; max-width: 480px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 4px 8px;
+  }
+  #hud .label { font-size: 11px; letter-spacing: 0.5px; color: var(--dim); }
+  #hud .value { font-size: 20px; font-weight: 700; color: var(--text); transition: color .15s, transform .15s; }
+  #hud .value.pop { transform: scale(1.25); color: var(--paddle); }
+  #hud .best { font-size: 10px; color: var(--dim); display:block; font-weight: 400; }
+  #combo {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%) scale(0.8);
+    font-size: 13px; font-weight: 700; color: var(--paddle);
+    opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s;
+    white-space: nowrap; z-index: 4;
+  }
+  #combo.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  #banner {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%,-50%) scale(0.7);
+    font-size: 22px; font-weight: 800; color: #ffd166;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    z-index: 4; white-space: nowrap;
+  }
+  #banner.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  #status {
+    position: absolute; bottom: 8px; left: 8px; display: flex; gap: 5px; z-index: 4;
+  }
+  .chip {
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+    background: rgba(255,255,255,0.1); color: var(--text); opacity: 0; transform: translateY(6px);
+    transition: opacity .15s, transform .15s;
+  }
+  .chip.show { opacity: 1; transform: translateY(0); }
+  #bossBar {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 70%; max-width: 300px; height: 10px; border-radius: 999px;
+    background: rgba(255,255,255,0.1); overflow: hidden; z-index: 4;
+    opacity: 0; transition: opacity .2s; border: 1px solid rgba(255,255,255,0.15);
+  }
+  #bossBar.show { opacity: 1; }
+  #bossBar > div {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #ef476f, #ff6b6b);
+    transition: width .15s;
+  }
+  #bossLabel {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; font-weight: 700; color: #ff9b9b; z-index: 4; opacity: 0; transition: opacity .2s;
+    letter-spacing: 1px;
+  }
+  #bossLabel.show { opacity: 1; }
+  #toastWrap {
+    position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 6px; z-index: 8; align-items: center;
+    pointer-events: none; width: 90%;
+  }
+  .toast {
+    background: linear-gradient(135deg, #2a2140, #1a1730);
+    border: 1px solid rgba(255,209,102,0.4);
+    color: #ffd166; font-size: 12px; font-weight: 700;
+    padding: 8px 14px; border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    opacity: 0; transform: translateY(-10px) scale(0.9);
+    animation: toastIn 0.35s forwards, toastOut 0.35s forwards 2.4s;
+    white-space: nowrap;
+  }
+  @keyframes toastIn { to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(-8px) scale(0.95); } }
+  #achBtn {
+    position: absolute; top: 10px; left: 12px;
+    background: rgba(255,255,255,0.06); border: none; color: var(--dim);
+    padding: 5px 10px; border-radius: 999px; font-size: 12px; cursor: pointer; z-index: 6;
+    font-weight: 700;
+  }
+  #achModal {
+    position: absolute; inset: 0; z-index: 9;
+    background: rgba(10,11,20,0.95); backdrop-filter: blur(4px);
+    display: none; flex-direction: column; padding: 20px; gap: 10px;
+  }
+  #achModal.show { display: flex; }
+  #achModal h2 { margin: 0 0 4px; font-size: 18px; }
+  #achList { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .achRow {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px 10px;
+  }
+  .achRow.locked { opacity: 0.35; }
+  .achIcon { font-size: 20px; width: 26px; text-align: center; }
+  .achText { display: flex; flex-direction: column; }
+  .achText b { font-size: 13px; }
+  .achText span { font-size: 11px; color: var(--dim); }
+  #achCloseBtn {
+    align-self: center; margin-top: 4px; padding: 9px 26px; border-radius: 999px; border: none;
+    background: rgba(255,255,255,0.1); color: var(--text); font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+  #btnRow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  #versusBtn, #coopBtn {
+    margin-top: 6px;
+    padding: 13px 22px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #versusBtn:active, #coopBtn:active { transform: scale(0.96); }
+  .vsScore {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 30px; font-weight: 800; color: rgba(244,247,251,0.55);
+    z-index: 4; display: none; letter-spacing: 1px;
+  }
+  .vsScore.show { display: block; }
+  #vsScoreTop { top: 8px; }
+  #vsScoreBottom { bottom: 8px; }
+  #vsMid {
+    position: absolute; left: 8px; right: 8px; top: 50%; height: 1px;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,0.15) 0 10px, transparent 10px 20px);
+    display: none; z-index: 3;
+  }
+  #vsMid.show { display: block; }
+  #stage {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 3 / 4;
+    background: linear-gradient(180deg, var(--bg2), var(--bg));
+    border-radius: 18px;
+    border: 3px solid var(--wall);
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 20px 40px rgba(0,0,0,0.5);
+  }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px;
+    background: rgba(13,15,26,0.92);
+    backdrop-filter: blur(3px);
+    text-align: center;
+    padding: 22px;
+    z-index: 5;
+    overflow-y: auto;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h1 { font-size: 24px; margin: 0; letter-spacing: -0.3px; }
+  #overlay p { margin: 0; color: var(--dim); font-size: 12.5px; line-height: 1.75; max-width: 300px; text-align: left; }
+  #startBtn {
+    margin-top: 4px;
+    padding: 13px 34px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, var(--paddle), var(--paddle2));
+    color: #1a1400;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(255,159,28,0.35);
+    flex-shrink: 0;
+  }
+  #startBtn:active { transform: scale(0.96); }
+  #soundBtn {
+    position: absolute; top: 10px; right: 12px;
+    background: rgba(255,255,255,0.06); border: none; color: var(--dim);
+    width: 30px; height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer;
+    z-index: 6;
+  }
+  #hint { font-size: 12px; color: var(--dim); text-align: center; max-width: 480px; }
+  .floater {
+    position: absolute; pointer-events: none; font-weight: 700; font-size: 13px;
+    color: var(--paddle);
+    animation: floatUp 0.7s ease-out forwards;
+    z-index: 4;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-26px); }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div><div class="label">점수</div><div class="value" id="score">0</div><span class="best" id="best">최고 0</span></div>
+    <div><div class="label">기회</div><div class="value" id="lives">●●●</div></div>
+    <div><div class="label">단계</div><div class="value" id="level">1</div></div>
+  </div>
+  <div id="stage">
+    <button id="soundBtn">🔊</button>
+    <button id="achBtn">🏆</button>
+    <div id="toastWrap"></div>
+    <div id="combo"></div>
+    <div id="banner"></div>
+    <div id="status"></div>
+    <div id="bossLabel">보스 등장!</div>
+    <div id="bossBar"><div></div></div>
+    <div id="vsScoreTop" class="vsScore">0</div>
+    <div id="vsScoreBottom" class="vsScore">0</div>
+    <div id="vsMid"></div>
+    <canvas id="game"></canvas>
+    <div id="achModal">
+      <h2>🏆 업적</h2>
+      <div id="achList"></div>
+      <button id="achCloseBtn">닫기</button>
+    </div>
+    <div id="overlay">
+      <h1 id="overlayTitle">벽 튕기기</h1>
+      <p id="overlayText">
+        드래그로 막대를 움직여 공을 튕겨요. 연속으로 맞히면 <b style="color:#ffd166">콤보</b> 점수!<br><br>
+        <b style="color:#06d6a0">W</b> 막대 확장 · <b style="color:#118ab2">+</b> 멀티볼 · <b style="color:#8338ec">S</b> 슬로우<br>
+        <b style="color:#ef476f">♥</b> 생명 · <b style="color:#ff6b6b">🔥</b> 파이어볼(관통)<br>
+        <b style="color:#ffd166">⚡</b> 레이저 막대 · <b style="color:#4cc9f0">🧲</b> 자석(공 붙잡기)<br>
+        <b style="color:#a0e7ff">🛡</b> 실드(한 번 안 놓침) · <b style="color:#ff8c00">💣</b> 폭탄볼(주변폭발)<br>
+        <b style="color:#f4f7fb">⬤</b> 거대공(커짐) · <b style="color:#8338ec">🕳️</b> 블랙홀(주변 흡수)<br>
+        <b style="color:#ffd60a">🔗</b> 체인라이트닝(연쇄파괴) · <b style="color:#ffd166">🪙</b> 코인(즉시 +100점)<br>
+        <b style="color:#ff3b3b">💀</b> 위험! 막대 축소<br><br>
+        가끔 <b style="color:#ffe066">✨ 골든 벽돌</b>이 반짝여요. 시간 안에 깨면 +150 보너스!<br><br>
+        한 단계를 목숨 안 잃고 깨면 퍼펙트 보너스!<br>
+        <b style="color:#ff6b6b">4단계마다 보스</b>가 등장해요. 공으로 계속 맞혀서 체력을 깎으세요!<br><br>
+        <b style="color:#8fb0d1">2인 대결</b>: 화면 위/아래를 각자 드래그하거나, 아래는 ←→ 키, 위는 A/D 키로 대결해요. 먼저 5점 내면 승리!<br>
+        <b style="color:#8fb0d1">2인 협동</b>: 막대 2개가 화면 좌/우를 나눠 맡아요. 왼쪽은 드래그나 ←→ 키, 오른쪽은 드래그나 A/D 키로 같이 벽돌을 깨요.
+      </p>
+      <button id="startBtn">시작하기</button>
+      <div id="btnRow">
+        <button id="versusBtn">👫 2인 대결</button>
+        <button id="coopBtn">🤝 2인 협동</button>
+      </div>
+    </div>
+  </div>
+  <div id="hint">드래그하거나 화살표 키로 이동 · 스페이스로 발사</div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const startBtn = document.getElementById('startBtn');
+  const versusBtn = document.getElementById('versusBtn');
+  const coopBtn = document.getElementById('coopBtn');
+  const hudEl = document.getElementById('hud');
+  const vsScoreTopEl = document.getElementById('vsScoreTop');
+  const vsScoreBottomEl = document.getElementById('vsScoreBottom');
+  const vsMidEl = document.getElementById('vsMid');
+  const soundBtn = document.getElementById('soundBtn');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const livesEl = document.getElementById('lives');
+  const levelEl = document.getElementById('level');
+  const comboEl = document.getElementById('combo');
+  const bannerEl = document.getElementById('banner');
+  const statusEl = document.getElementById('status');
+  const bossBarEl = document.getElementById('bossBar');
+  const bossBarFillEl = bossBarEl.querySelector('div');
+  const bossLabelEl = document.getElementById('bossLabel');
+  const achBtn = document.getElementById('achBtn');
+  const achModal = document.getElementById('achModal');
+  const achList = document.getElementById('achList');
+  const achCloseBtn = document.getElementById('achCloseBtn');
+  const toastWrap = document.getElementById('toastWrap');
+
+  let highScore = 0;
+  try { highScore = parseInt(localStorage.getItem('bounceGameHighScore') || '0', 10) || 0; } catch(e){}
+  bestEl.textContent = '최고 ' + highScore;
+
+  // ---------- 업적 ----------
+  const ACHIEVEMENTS = [
+    { id:'first_brick', icon:'🧱', title:'첫 발', desc:'벽돌을 처음으로 깼어요' },
+    { id:'combo5', icon:'🔥', title:'콤보 마스터', desc:'콤보 x5 달성' },
+    { id:'combo10', icon:'⚡', title:'불타는 손', desc:'콤보 x10 달성' },
+    { id:'level3', icon:'🚩', title:'꾸준한 도전', desc:'3단계 도달' },
+    { id:'level6', icon:'🏔️', title:'베테랑', desc:'6단계 도달' },
+    { id:'boss1', icon:'👹', title:'보스 사냥꾼', desc:'첫 보스 처치' },
+    { id:'perfect', icon:'💯', title:'퍼펙트!', desc:'목숨 안 잃고 단계 클리어' },
+    { id:'score500', icon:'⭐', title:'점수 사냥꾼', desc:'점수 500점 달성' },
+    { id:'score2000', icon:'🌟', title:'점수왕', desc:'점수 2000점 달성' },
+    { id:'allitems', icon:'🎒', title:'수집가', desc:'모든 아이템 종류를 사용해봤어요' },
+    { id:'comeback', icon:'💪', title:'마지막 생명', desc:'생명 1개로 단계 클리어' },
+    { id:'multiball3', icon:'🔱', title:'삼위일체', desc:'공 3개를 동시에 굴렸어요' },
+    { id:'shieldsave', icon:'🙌', title:'아슬아슬', desc:'실드로 목숨을 지켰어요' },
+    { id:'laser10', icon:'🔫', title:'저격수', desc:'레이저로 벽돌 10개 파괴' },
+    { id:'level10', icon:'🏆', title:'전설', desc:'10단계 도달' },
+    { id:'score5000', icon:'👑', title:'점수의 제왕', desc:'점수 5000점 달성' },
+    { id:'bossslayer3', icon:'🗡️', title:'보스 헌터', desc:'보스 3마리 처치(누적)' },
+    { id:'blackhole1', icon:'🕳️', title:'특이점', desc:'블랙홀을 처음 사용했어요' }
+  ];
+  let unlockedAch = new Set();
+  try { unlockedAch = new Set(JSON.parse(localStorage.getItem('bounceGameAch') || '[]')); } catch(e){}
+  let usedItemTypes = new Set();
+
+  function unlockAchievement(id){
+    if (unlockedAch.has(id)) return;
+    unlockedAch.add(id);
+    try { localStorage.setItem('bounceGameAch', JSON.stringify([...unlockedAch])); } catch(e){}
+    const meta = ACHIEVEMENTS.find(a=>a.id===id);
+    if (!meta) return;
+    sfx.achieve();
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = meta.icon + ' 업적 달성: ' + meta.title;
+    toastWrap.appendChild(t);
+    setTimeout(()=> t.remove(), 2900);
+  }
+
+  function renderAchList(){
+    achList.innerHTML = ACHIEVEMENTS.map(a=>{
+      const got = unlockedAch.has(a.id);
+      return `<div class="achRow ${got?'':'locked'}">
+        <div class="achIcon">${got ? a.icon : '🔒'}</div>
+        <div class="achText"><b>${a.title}</b><span>${a.desc}</span></div>
+      </div>`;
+    }).join('');
+  }
+  achBtn.addEventListener('click', ()=>{ renderAchList(); achModal.classList.add('show'); });
+  achCloseBtn.addEventListener('click', ()=> achModal.classList.remove('show'));
+
+  let soundOn = true;
+  let actx = null;
+  function ensureAudio(){ if (!actx) { try { actx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} } }
+  function beep(freq, dur, type, vol){
+    if (!soundOn || !actx) return;
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.value = freq;
+    gain.gain.value = (vol!=null?vol:0.06);
+    osc.connect(gain); gain.connect(actx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
+    osc.stop(actx.currentTime + dur);
+  }
+  const sfx = {
+    paddle: ()=> beep(220, 0.08, 'square', 0.05),
+    brick: (pitch)=> beep(440 + pitch*30, 0.07, 'square', 0.05),
+    wall: ()=> beep(160, 0.05, 'sine', 0.03),
+    lose: ()=> beep(90, 0.35, 'sawtooth', 0.07),
+    power: ()=> { beep(660,0.08,'sine',0.06); setTimeout(()=>beep(880,0.1,'sine',0.06),80); },
+    bad: ()=> { beep(200,0.12,'sawtooth',0.06); setTimeout(()=>beep(140,0.16,'sawtooth',0.06),100); },
+    laser: ()=> beep(1200,0.04,'sawtooth',0.035),
+    boom: ()=> beep(80,0.25,'sawtooth',0.09),
+    shield: ()=> beep(500,0.1,'triangle',0.07),
+    levelup: ()=> { beep(523,0.1,'sine',0.06); setTimeout(()=>beep(659,0.1,'sine',0.06),100); setTimeout(()=>beep(784,0.16,'sine',0.06),200); },
+    perfect: ()=> { beep(784,0.1,'sine',0.07); setTimeout(()=>beep(988,0.1,'sine',0.07),90); setTimeout(()=>beep(1175,0.2,'sine',0.07),180); },
+    best: ()=> { beep(880,0.12,'triangle',0.07); setTimeout(()=>beep(1175,0.2,'triangle',0.07),110); },
+    bossHit: ()=> beep(300,0.05,'square',0.05),
+    bossDown: ()=> { beep(200,0.15,'sawtooth',0.08); setTimeout(()=>beep(150,0.15,'sawtooth',0.08),150); setTimeout(()=>beep(100,0.3,'sawtooth',0.09),300); },
+    achieve: ()=> { beep(700,0.08,'triangle',0.06); setTimeout(()=>beep(1050,0.14,'triangle',0.07),90); },
+    vortex: ()=> { beep(120,0.2,'sine',0.06); setTimeout(()=>beep(80,0.25,'sine',0.06),120); setTimeout(()=>beep(50,0.3,'sine',0.06),260); }
+  };
+  soundBtn.addEventListener('click', ()=>{
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? '🔊' : '🔇';
+  });
+
+  let W, H, DPR;
+  let stars = [];
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = canvas.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    layoutBricks();
+    stars = [];
+    for (let i=0;i<40;i++){
+      stars.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.4+0.3, ph: Math.random()*Math.PI*2 });
+    }
+    if (mode === 'versus'){
+      paddle.y = H - 30;
+      paddleTop.y = 18;
+      paddle.x = Math.min(paddle.x, W - paddle.w);
+      paddleTop.x = Math.min(paddleTop.x, W - paddleTop.w);
+    }
+    if (mode === 'coop'){
+      paddle.y = H - 34;
+      paddle2.y = paddle.y;
+      paddle.x = Math.min(paddle.x, W - paddle.w);
+      paddle2.x = Math.min(paddle2.x, W - paddle2.w);
+    }
+  }
+
+  const brickColors = ['#ef476f','#ffd166','#06d6a0','#118ab2','#8338ec','#ff6b6b'];
+  let bricks = [];
+  const cols = 6;
+  let rows = 5;
+  const brickGap = 6;
+  let brickW, brickH;
+
+  function layoutBricks(){
+    brickW = (W - brickGap*(cols+1)) / cols;
+    brickH = 16;
+    if (bricks.length === 0) buildBricks();
+  }
+
+  function cellAlive(pattern, r, c, totalRows){
+    const midC = (cols-1)/2;
+    const midR = (totalRows-1)/2;
+    if (pattern === 'checker') return (r+c)%2===0;
+    if (pattern === 'diamond'){
+      const dist = Math.abs(r-midR)/Math.max(midR,1) + Math.abs(c-midC)/Math.max(midC,1);
+      return dist <= 1.15;
+    }
+    if (pattern === 'pyramid'){
+      const width = Math.round((r+1)/totalRows * cols);
+      const start = Math.floor((cols-width)/2);
+      return c >= start && c < start+width;
+    }
+    return true;
+  }
+
+  let boss = null;
+  let blackHole = null;
+  function isBossLevel(lv){ return lv % 4 === 0; }
+
+  function buildBoss(){
+    const hp = 16 + level*3;
+    boss = {
+      w: Math.min(140, W*0.42), h: 26,
+      x: W/2 - 70, y: 46,
+      hp: hp, maxHp: hp,
+      dir: 1, speed: 1.4 + level*0.12,
+      flash: 0
+    };
+    bossBarEl.classList.add('show');
+    bossLabelEl.classList.add('show');
+    bossBarFillEl.style.width = '100%';
+  }
+
+  function buildBricks(){
+    bossBarEl.classList.remove('show');
+    bossLabelEl.classList.remove('show');
+    boss = null;
+    goldenBrick = null;
+    goldenSpawnAt = performance.now() + 5000 + Math.random()*3000;
+    if (isBossLevel(level)){
+      bricks = [];
+      buildBoss();
+      return;
+    }
+    const patterns = ['full','checker','diamond','pyramid'];
+    const pattern = patterns[(level-1) % patterns.length];
+    const effRows = (level === 5) ? Math.max(rows - 1, 5) : rows;
+    const toughChance = (level === 5) ? 0.10 : (level >= 3 ? 0.16 : 0);
+    bricks = [];
+    for (let r=0; r<effRows; r++){
+      for (let c=0; c<cols; c++){
+        if (!cellAlive(pattern, r, c, effRows)) continue;
+        const tough = Math.random() < toughChance;
+        bricks.push({
+          x: brickGap + c*(brickW+brickGap),
+          y: 40 + r*(brickH+brickGap),
+          w: brickW, h: brickH,
+          hp: tough ? 2 : 1,
+          maxHp: tough ? 2 : 1,
+          alive: true,
+          color: brickColors[r % brickColors.length],
+          flash: 0
+        });
+      }
+    }
+  }
+
+  const paddle = {
+    baseW: 78, w: 78, h: 12, x: 0, y: 0, squash: 0,
+    wideUntil: 0, shrinkUntil: 0, laserUntil: 0, magnetUntil: 0, shieldActive: false
+  };
+  const paddle2 = { x: 0, y: 0, w: 78, h: 12, squash: 0 };
+  function activePaddles(){ return mode === 'coop' ? [paddle, paddle2] : [paddle]; }
+  const paddleTop = { w: 78, h: 12, x: 0, y: 0, squash: 0 };
+  let mode = 'solo';
+  let vsBall = null;
+  let vsScoreTop = 0, vsScoreBottom = 0;
+  const VS_TARGET = 5;
+  let vsRafId = null;
+  let vsServeTimer = 0;
+  function makeBall(){ return { x:0, y:0, r: 7, baseR: 7, vx: 0, vy: 0, speed: 0, launched: false, stuck:false, trail: [], fireUntil: 0, bombUntil: 0, giantUntil: 0, chainUntil: 0 }; }
+  let balls = [];
+  let particles = [];
+  let powerups = [];
+  let lasers = [];
+
+  let score = 0, lives = 3, level = 1, running = false, rafId = null;
+  let combo = 0, comboHideTimer = null;
+  let shake = 0;
+  let slowUntil = 0;
+  let livesAtLevelStart = 3;
+  let lastLaserShot = 0;
+  let goldenBrick = null;
+  let goldenSpawnAt = 0;
+  let newBestShown = false;
+  let bossJustCleared = false;
+  let laserBrickKills = 0;
+  let bossKillCount = 0;
+
+  function currentPaddleWidth(){
+    const now = performance.now();
+    let w = paddle.baseW;
+    if (now < paddle.wideUntil) w *= 1.6;
+    if (now < paddle.shrinkUntil) w *= 0.55;
+    return w;
+  }
+
+  function resetPaddleBall(){
+    paddle.baseW = 78;
+    paddle.wideUntil = 0; paddle.shrinkUntil = 0; paddle.laserUntil = 0; paddle.magnetUntil = 0;
+    paddle.shieldActive = false;
+    paddle.w = paddle.baseW;
+    paddle.y = H - 34;
+    if (mode === 'coop'){
+      paddle.x = W*0.26 - paddle.w/2;
+      paddle2.w = paddle.w;
+      paddle2.y = paddle.y;
+      paddle2.x = W*0.74 - paddle2.w/2;
+    } else {
+      paddle.x = W/2 - paddle.w/2;
+    }
+    slowUntil = 0;
+    blackHole = null;
+    balls = [makeBall()];
+    const b = balls[0];
+    b.x = W/2;
+    b.y = paddle.y - b.r - 2;
+    b.launched = false;
+    b.speed = 4.6 + (level-1)*0.35 - (level === 5 ? 0.3 : 0);
+    combo = 0;
+    powerups = [];
+    lasers = [];
+  }
+
+  function launchBall(b){
+    if (b.launched) return;
+    const angle = (-Math.PI/2) + (Math.random()*0.6 - 0.3);
+    b.vx = Math.cos(angle) * b.speed;
+    b.vy = Math.sin(angle) * b.speed;
+    b.launched = true;
+    b.stuck = false;
+  }
+
+  function popValue(el){
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+  }
+
+  function updateHud(){
+    scoreEl.textContent = score;
+    levelEl.textContent = level;
+    livesEl.textContent = '●'.repeat(Math.max(lives,0)) + '○'.repeat(Math.max(3-lives,0));
+    if (score >= 500) unlockAchievement('score500');
+    if (score >= 2000) unlockAchievement('score2000');
+    if (score >= 5000) unlockAchievement('score5000');
+    if (score > highScore){
+      highScore = score;
+      bestEl.textContent = '최고 ' + highScore;
+      if (!newBestShown){ newBestShown = true; sfx.best(); showBanner('신기록!'); }
+      try { localStorage.setItem('bounceGameHighScore', String(highScore)); } catch(e){}
+    }
+  }
+
+  function showCombo(){
+    if (combo >= 5) unlockAchievement('combo5');
+    if (combo >= 10) unlockAchievement('combo10');
+    if (combo >= 2){
+      comboEl.textContent = 'COMBO x' + combo;
+      comboEl.classList.add('show');
+      clearTimeout(comboHideTimer);
+      comboHideTimer = setTimeout(()=> comboEl.classList.remove('show'), 700);
+    }
+  }
+
+  let bannerTimer = null;
+  function showBanner(text){
+    bannerEl.textContent = text;
+    bannerEl.classList.add('show');
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(()=> bannerEl.classList.remove('show'), 1100);
+  }
+
+  function spawnFloater(x, y, text){
+    const f = document.createElement('div');
+    f.className = 'floater';
+    f.textContent = text;
+    f.style.left = x + 'px';
+    f.style.top = y + 'px';
+    stage.appendChild(f);
+    setTimeout(()=> f.remove(), 700);
+  }
+
+  function spawnParticles(x, y, color, n){
+    for (let i=0;i<n;i++){
+      const a = Math.random()*Math.PI*2;
+      const sp = 1.5 + Math.random()*3;
+      particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: 1, color, size: 2+Math.random()*2 });
+    }
+  }
+
+  function maybeSpawnPowerup(x, y){
+    if (Math.random() < 0.2){
+      const goodTypes = ['wide','multi','slow','life','fire','laser','magnet','shield','bomb','giant','blackhole','chain','coin'];
+      const isBad = Math.random() < 0.16;
+      const type = isBad ? 'shrink' : goodTypes[Math.floor(Math.random()*goodTypes.length)];
+      powerups.push({ x, y, vy: 2.1, type, r: 9 });
+    }
+  }
+
+  function drawRoundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function shadeColor(hex, percent){
+    const num = parseInt(hex.replace('#',''),16);
+    let r = (num>>16) + Math.round(255*(percent/100));
+    let g = ((num>>8)&0xff) + Math.round(255*(percent/100));
+    let b = (num&0xff) + Math.round(255*(percent/100));
+    r = Math.max(0,Math.min(255,r)); g = Math.max(0,Math.min(255,g)); b = Math.max(0,Math.min(255,b));
+    return '#' + (r<<16|g<<8|b).toString(16).padStart(6,'0');
+  }
+
+  const powerupMeta = {
+    wide: { color: '#06d6a0', label: 'W' },
+    multi: { color: '#118ab2', label: '+' },
+    slow: { color: '#8338ec', label: 'S' },
+    life: { color: '#ef476f', label: '♥' },
+    fire: { color: '#ff6b6b', label: '🔥' },
+    laser: { color: '#ffd166', label: '⚡' },
+    magnet: { color: '#4cc9f0', label: '🧲' },
+    shield: { color: '#a0e7ff', label: '🛡' },
+    bomb: { color: '#ff8c00', label: '💣' },
+    giant: { color: '#f4f7fb', label: '⬤' },
+    shrink: { color: '#ff3b3b', label: '💀' },
+    blackhole: { color: '#8338ec', label: '🕳️' },
+    chain: { color: '#ffd60a', label: '🔗' },
+    coin: { color: '#ffd166', label: '🪙' }
+  };
+
+  function updateStatusChips(){
+    const now = performance.now();
+    const chips = [];
+    if (now < paddle.wideUntil) chips.push(['W','#06d6a0']);
+    if (now < paddle.shrinkUntil) chips.push(['축소','#ff3b3b']);
+    if (now < paddle.laserUntil) chips.push(['⚡','#ffd166']);
+    if (now < paddle.magnetUntil) chips.push(['🧲','#4cc9f0']);
+    if (paddle.shieldActive) chips.push(['🛡','#a0e7ff']);
+    if (now < slowUntil) chips.push(['S','#8338ec']);
+    if (balls.some(b => now < b.chainUntil)) chips.push(['🔗','#ffd60a']);
+    statusEl.innerHTML = chips.map(c=>`<span class="chip show" style="background:${c[1]}22;color:${c[1]}">${c[0]}</span>`).join('');
+  }
+
+  function draw(t){
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+    ctx.clearRect(-10,-10,W+20,H+20);
+
+    // 네뷸라 배경
+    const tt = (t||0)/1000;
+    const n1x = W*0.3 + Math.sin(tt*0.15)*W*0.15;
+    const n1y = H*0.25 + Math.cos(tt*0.12)*H*0.1;
+    const g1 = ctx.createRadialGradient(n1x, n1y, 0, n1x, n1y, W*0.55);
+    g1.addColorStop(0, 'rgba(131,56,236,0.14)');
+    g1.addColorStop(1, 'rgba(131,56,236,0)');
+    ctx.fillStyle = g1;
+    ctx.fillRect(0,0,W,H);
+    const n2x = W*0.7 + Math.cos(tt*0.1)*W*0.15;
+    const n2y = H*0.7 + Math.sin(tt*0.14)*H*0.12;
+    const g2 = ctx.createRadialGradient(n2x, n2y, 0, n2x, n2y, W*0.5);
+    g2.addColorStop(0, 'rgba(6,214,160,0.10)');
+    g2.addColorStop(1, 'rgba(6,214,160,0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0,0,W,H);
+
+    stars.forEach(s=>{
+      const tw = 0.4 + 0.4*Math.sin((t||0)/700 + s.ph);
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = '#3a4570';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    bricks.forEach(b=>{
+      if (!b.alive) return;
+      ctx.globalAlpha = b.hp < b.maxHp ? 0.65 : 1;
+      const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y+b.h);
+      const c = b.flash > 0 ? '#ffffff' : (b.golden ? '#ffe066' : b.color);
+      grad.addColorStop(0, c);
+      grad.addColorStop(1, shadeColor(c, -22));
+      ctx.fillStyle = grad;
+      if (b.hp < b.maxHp && !b.golden){ ctx.shadowColor = c; ctx.shadowBlur = 10; }
+      if (b.golden){
+        const pulse = 10 + Math.sin((t||0)/90) * 5;
+        ctx.shadowColor = '#ffe066'; ctx.shadowBlur = pulse;
+      }
+      drawRoundRect(b.x, b.y, b.w, b.h, 4);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      if (b.golden){
+        const frac = Math.max(0, (b.goldenUntil - (performance.now())) / 7000);
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(b.x + b.w - 6, b.y + 6, 5, -Math.PI/2, -Math.PI/2 + frac*Math.PI*2);
+        ctx.stroke();
+      }
+      if (b.flash > 0) b.flash -= 0.08;
+    });
+
+    if (boss){
+      ctx.shadowColor = '#ef476f';
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = boss.flash > 0 ? '#ffffff' : '#ef476f';
+      drawRoundRect(boss.x, boss.y, boss.w, boss.h, 8);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('👹', boss.x + boss.w/2, boss.y + boss.h/2 + 1);
+      if (boss.flash > 0) boss.flash -= 0.08;
+    }
+
+    if (blackHole){
+      const spin = (t||0)/200;
+      ctx.save();
+      ctx.translate(blackHole.x, blackHole.y);
+      for (let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(131,56,236,${0.35 - i*0.1})`;
+        ctx.lineWidth = 2;
+        ctx.arc(0, 0, 18 + i*10, spin + i, spin + i + 4.2);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.fillStyle = '#05030a';
+      ctx.shadowColor = '#8338ec';
+      ctx.shadowBlur = 20;
+      ctx.arc(0, 0, 13, 0, Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    ctx.fillStyle = '#ffd166';
+    lasers.forEach(l=>{
+      drawRoundRect(l.x-1.5, l.y-8, 3, 14, 1.5);
+      ctx.fill();
+    });
+
+    powerups.forEach(p=>{
+      const meta = powerupMeta[p.type];
+      ctx.shadowColor = meta.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.fillStyle = meta.color;
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#0d0f1a';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(meta.label, p.x, p.y+1);
+    });
+
+    particles.forEach(p=>{
+      ctx.globalAlpha = Math.max(p.life,0);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    const now = performance.now();
+    const isLaser = now < paddle.laserUntil;
+    const isMagnet = now < paddle.magnetUntil;
+    const paddleColor = isLaser ? '#ffd166' : (isMagnet ? '#4cc9f0' : (now < paddle.wideUntil ? '#06d6a0' : (now < paddle.shrinkUntil ? '#ff6b6b' : '#ffd166')));
+    activePaddles().forEach(pd=>{
+      const pH = pd.h - pd.squash*4;
+      ctx.shadowColor = paddleColor;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = paddleColor;
+      drawRoundRect(pd.x, pd.y + pd.squash*2, pd.w, pH, 6);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      if (isLaser || isMagnet){
+        ctx.strokeStyle = isLaser ? 'rgba(255,209,102,0.6)' : 'rgba(76,201,240,0.6)';
+        ctx.lineWidth = 2;
+        drawRoundRect(pd.x-2, pd.y + pd.squash*2-2, pd.w+4, pH+4, 8);
+        ctx.stroke();
+      }
+      if (pd.squash > 0) pd.squash *= 0.85;
+    });
+    if (paddle.shieldActive){
+      ctx.strokeStyle = 'rgba(160,231,255,0.7)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(4, H-4);
+      ctx.lineTo(W-4, H-4);
+      ctx.stroke();
+    }
+
+    balls.forEach(b=>{
+      const fire = now < b.fireUntil;
+      const bomb = now < b.bombUntil;
+      const color = fire ? '#ff5a3c' : (bomb ? '#ff8c00' : '#f4f7fb');
+      b.trail.forEach((tp,i)=>{
+        ctx.globalAlpha = (i/b.trail.length) * 0.28;
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.arc(tp.x, tp.y, b.r*0.8, 0, Math.PI*2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.fillStyle = color;
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    ctx.restore();
+    if (shake > 0) shake *= 0.85;
+    if (shake < 0.3) shake = 0;
+  }
+
+  function loseLife(){
+    lives -= 1;
+    popValue(livesEl);
+    sfx.lose();
+    shake = 8;
+    updateHud();
+    if (lives <= 0){
+      gameOver(false);
+    } else {
+      resetPaddleBall();
+    }
+  }
+
+  function nextLevel(){
+    if (lives === 1) unlockAchievement('comeback');
+    if (lives >= livesAtLevelStart){
+      score += 50;
+      spawnFloater(W/2 - 20, H/2, '+50');
+      showBanner('퍼펙트! 💯');
+      sfx.perfect();
+      unlockAchievement('perfect');
+    } else {
+      showBanner('단계 클리어!');
+      sfx.levelup();
+    }
+    level += 1;
+    rows = Math.min(rows+1, 8);
+    if (level >= 3) unlockAchievement('level3');
+    if (level >= 6) unlockAchievement('level6');
+    if (level >= 10) unlockAchievement('level10');
+    buildBricks();
+    resetPaddleBall();
+    livesAtLevelStart = lives;
+    updateHud();
+  }
+
+  function awardGoldenBonus(b){
+    if (!b.golden) return;
+    score += 150;
+    spawnFloater(b.x + b.w/2, b.y, '+150 ✨');
+    showBanner('골든 벽돌! +150 ✨');
+    spawnParticles(b.x + b.w/2, b.y + b.h/2, '#ffe066', 16);
+    sfx.best();
+    goldenBrick = null;
+    goldenSpawnAt = performance.now() + 8000 + Math.random()*4000;
+  }
+
+  function explodeAt(cx, cy, radius){
+    sfx.boom();
+    shake = Math.max(shake, 6);
+    spawnParticles(cx, cy, '#ff8c00', 18);
+    bricks.forEach(b=>{
+      if (!b.alive) return;
+      const bx = b.x + b.w/2, by = b.y + b.h/2;
+      if (Math.hypot(bx-cx, by-cy) <= radius){
+        b.hp = 0; b.alive = false;
+        score += 8;
+        spawnParticles(bx, by, b.color, 5);
+        awardGoldenBonus(b);
+      }
+    });
+    updateHud();
+  }
+
+  function chainDestroy(cx, cy, count){
+    const candidates = bricks
+      .filter(b => b.alive)
+      .map(b => ({ b, d: Math.hypot((b.x+b.w/2)-cx, (b.y+b.h/2)-cy) }))
+      .sort((a,z) => a.d - z.d)
+      .slice(0, count);
+    candidates.forEach(({b})=>{
+      b.hp = 0; b.alive = false;
+      score += 8;
+      spawnParticles(b.x+b.w/2, b.y+b.h/2, '#ffd60a', 6);
+      awardGoldenBonus(b);
+    });
+    if (candidates.length) { shake = Math.max(shake, 3); sfx.bossHit(); updateHud(); }
+  }
+
+  function applyPowerup(type){
+    usedItemTypes.add(type);
+    const allTypes = ['wide','multi','slow','life','fire','laser','magnet','shield','bomb','giant','shrink','blackhole','chain','coin'];
+    if (allTypes.every(t => usedItemTypes.has(t))) unlockAchievement('allitems');
+    if (type === 'shrink'){
+      sfx.bad();
+      paddle.shrinkUntil = performance.now() + 6000;
+      shake = Math.max(shake, 4);
+      showBanner('막대 축소!');
+      return;
+    }
+    sfx.power();
+    if (type === 'wide'){
+      paddle.wideUntil = performance.now() + 9000;
+    } else if (type === 'multi'){
+      const src = balls[0];
+      for (let i=0;i<2;i++){
+        const nb = makeBall();
+        nb.r = src.r; nb.x = src.x; nb.y = src.y; nb.speed = src.speed;
+        nb.launched = true;
+        const angle = (-Math.PI/2) + (i===0?-0.5:0.5);
+        nb.vx = Math.cos(angle)*nb.speed;
+        nb.vy = Math.sin(angle)*nb.speed;
+        balls.push(nb);
+      }
+      if (balls.length >= 3) unlockAchievement('multiball3');
+    } else if (type === 'slow'){
+      slowUntil = performance.now() + 7000;
+    } else if (type === 'life'){
+      lives = Math.min(lives+1, 5);
+      updateHud();
+    } else if (type === 'fire'){
+      const until = performance.now() + 6000;
+      balls.forEach(b => b.fireUntil = until);
+    } else if (type === 'laser'){
+      paddle.laserUntil = performance.now() + 8000;
+    } else if (type === 'magnet'){
+      paddle.magnetUntil = performance.now() + 9000;
+    } else if (type === 'shield'){
+      paddle.shieldActive = true;
+      sfx.shield();
+    } else if (type === 'bomb'){
+      const until = performance.now() + 8000;
+      balls.forEach(b => b.bombUntil = until);
+    } else if (type === 'giant'){
+      const until = performance.now() + 8000;
+      balls.forEach(b => { b.giantUntil = until; b.r = b.baseR * 1.8; });
+    } else if (type === 'blackhole'){
+      blackHole = {
+        x: W*0.25 + Math.random()*W*0.5,
+        y: 90 + Math.random()*70,
+        pullRadius: 150,
+        eatRadius: 16,
+        until: performance.now() + 6000
+      };
+      unlockAchievement('blackhole1');
+      sfx.vortex();
+      showBanner('블랙홀 소환! 🕳️');
+    } else if (type === 'chain'){
+      const until = performance.now() + 8000;
+      balls.forEach(b => b.chainUntil = until);
+    } else if (type === 'coin'){
+      score += 100;
+      popValue(scoreEl);
+      updateHud();
+    }
+  }
+
+  function step(t){
+    if (!running) return;
+
+    const now = performance.now();
+    paddle.w = currentPaddleWidth();
+    paddle.x = Math.min(Math.max(paddle.x, 0), W - paddle.w);
+    if (mode === 'coop'){
+      paddle2.w = paddle.w;
+      paddle2.y = paddle.y;
+      paddle2.x = Math.min(Math.max(paddle2.x, 0), W - paddle2.w);
+    }
+    const speedMul = now < slowUntil ? 0.6 : 1;
+
+    balls.forEach(b=>{
+      if (b.r > b.baseR && now > b.giantUntil) b.r = b.baseR;
+    });
+
+    if (boss){
+      boss.x += boss.dir * boss.speed;
+      if (boss.x <= 0){ boss.x = 0; boss.dir = 1; }
+      if (boss.x + boss.w >= W){ boss.x = W - boss.w; boss.dir = -1; }
+      bossBarFillEl.style.width = Math.max(0,(boss.hp/boss.maxHp)*100) + '%';
+    }
+
+    if (mode !== 'versus' && !boss){
+      if (goldenBrick && (!goldenBrick.alive || now > goldenBrick.goldenUntil)){
+        goldenBrick.golden = false;
+        goldenBrick = null;
+        goldenSpawnAt = now + 8000 + Math.random()*4000;
+      }
+      if (!goldenBrick && now > goldenSpawnAt){
+        const alive = bricks.filter(b=>b.alive);
+        if (alive.length){
+          goldenBrick = alive[Math.floor(Math.random()*alive.length)];
+          goldenBrick.golden = true;
+          goldenBrick.goldenUntil = now + 7000;
+        }
+      }
+    }
+
+    if (blackHole){
+      if (now > blackHole.until){
+        blackHole = null;
+      } else {
+        bricks.forEach(b=>{
+          if (!b.alive) return;
+          const bx = b.x + b.w/2, by = b.y + b.h/2;
+          const dx = blackHole.x - bx, dy = blackHole.y - by;
+          const dist = Math.hypot(dx, dy);
+          if (dist < blackHole.pullRadius){
+            if (dist < blackHole.eatRadius){
+              b.alive = false;
+              score += 15;
+              spawnParticles(bx, by, '#8338ec', 8);
+              awardGoldenBonus(b);
+              updateHud();
+            } else {
+              b.x += dx * 0.05;
+              b.y += dy * 0.05;
+            }
+          }
+        });
+        balls.forEach(ball=>{
+          if (!ball.launched) return;
+          const dx = blackHole.x - ball.x, dy = blackHole.y - ball.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < blackHole.pullRadius && dist > 1){
+            const pull = 0.35;
+            ball.vx += (dx/dist) * pull;
+            ball.vy += (dy/dist) * pull;
+            const spd = Math.hypot(ball.vx, ball.vy);
+            if (spd > 0){
+              const scale = ball.speed / spd;
+              ball.vx *= scale; ball.vy *= scale;
+            }
+          }
+        });
+      }
+    }
+
+    if (now < paddle.laserUntil && now - lastLaserShot > 320){
+      lastLaserShot = now;
+      activePaddles().forEach(pd => lasers.push({ x: pd.x + pd.w/2, y: pd.y }));
+      sfx.laser();
+    }
+    lasers.forEach(l => l.y -= 9);
+    lasers = lasers.filter(l=>{
+      if (l.y < 0) return false;
+      if (boss && l.x > boss.x && l.x < boss.x+boss.w && l.y > boss.y && l.y < boss.y+boss.h){
+        boss.hp -= 1; boss.flash = 1;
+        score += 2; updateHud();
+        sfx.bossHit();
+        return false;
+      }
+      for (const b of bricks){
+        if (!b.alive) continue;
+        if (l.x > b.x && l.x < b.x+b.w && l.y > b.y && l.y < b.y+b.h){
+          b.hp -= 1; b.flash = 1;
+          if (b.hp <= 0){
+            b.alive = false;
+            score += 6;
+            laserBrickKills += 1;
+            if (laserBrickKills >= 10) unlockAchievement('laser10');
+            spawnParticles(b.x+b.w/2, b.y+b.h/2, b.color, 6);
+            maybeSpawnPowerup(b.x+b.w/2, b.y+b.h/2);
+            awardGoldenBonus(b);
+            updateHud();
+          }
+          return false;
+        }
+      }
+      return true;
+    });
+
+    balls.forEach(ball=>{
+      if (!ball.launched){
+        ball.x = paddle.x + paddle.w/2;
+        return;
+      }
+
+      ball.trail.push({x: ball.x, y: ball.y});
+      if (ball.trail.length > 6) ball.trail.shift();
+
+      ball.x += ball.vx * speedMul;
+      ball.y += ball.vy * speedMul;
+
+      if (ball.x - ball.r < 0){ ball.x = ball.r; ball.vx *= -1; sfx.wall(); }
+      if (ball.x + ball.r > W){ ball.x = W - ball.r; ball.vx *= -1; sfx.wall(); }
+      if (ball.y - ball.r < 0){ ball.y = ball.r; ball.vy *= -1; sfx.wall(); }
+
+      const fire = now < ball.fireUntil;
+      const bomb = now < ball.bombUntil;
+      const magnet = now < paddle.magnetUntil;
+
+      if (ball.vy > 0){
+        for (const pd of activePaddles()){
+          if (ball.y + ball.r >= pd.y &&
+              ball.y + ball.r <= pd.y + pd.h + 8 &&
+              ball.x >= pd.x - ball.r &&
+              ball.x <= pd.x + pd.w + ball.r){
+            if (magnet && !ball.stuck){
+              ball.stuck = true;
+              ball.stuckPaddle = pd;
+              ball.launched = false;
+              ball.vx = 0; ball.vy = 0;
+              ball.y = pd.y - ball.r - 0.5;
+            } else {
+              const hitPos = (ball.x - (pd.x + pd.w/2)) / (pd.w/2);
+              const angle = hitPos * (Math.PI/3);
+              const speed = Math.hypot(ball.vx, ball.vy);
+              ball.vx = Math.sin(angle) * speed;
+              ball.vy = -Math.abs(Math.cos(angle) * speed);
+              ball.y = pd.y - ball.r - 0.5;
+              pd.squash = 1;
+              sfx.paddle();
+              combo = 0;
+            }
+            break;
+          }
+        }
+      }
+
+      if (ball.stuck){
+        const sp = ball.stuckPaddle || paddle;
+        ball.x = sp.x + sp.w/2;
+        ball.y = sp.y - ball.r - 0.5;
+      }
+
+      if (boss && ball.x + ball.r > boss.x && ball.x - ball.r < boss.x + boss.w &&
+          ball.y + ball.r > boss.y && ball.y - ball.r < boss.y + boss.h){
+        boss.hp -= 1;
+        boss.flash = 1;
+        combo += 1;
+        const gained = 5 * Math.min(combo, 8);
+        score += gained;
+        popValue(scoreEl);
+        spawnFloater(boss.x + boss.w/2, boss.y, '+' + gained);
+        showCombo();
+        spawnParticles(ball.x, ball.y, '#ef476f', 6);
+        sfx.bossHit();
+        updateHud();
+        if (!fire){
+          const overlapTop = (ball.y + ball.r) - boss.y;
+          const overlapBottom = (boss.y + boss.h) - (ball.y - ball.r);
+          if (overlapTop < overlapBottom) ball.vy = -Math.abs(ball.vy);
+          else ball.vy = Math.abs(ball.vy);
+        }
+        if (Math.random() < 0.25) maybeSpawnPowerup(boss.x + Math.random()*boss.w, boss.y + boss.h);
+        if (boss.hp <= 0){
+          const bx = boss.x + boss.w/2, by = boss.y + boss.h/2;
+          spawnParticles(bx, by, '#ef476f', 30);
+          score += 200;
+          shake = Math.max(shake, 10);
+          sfx.bossDown();
+          showBanner('보스 처치! +200');
+          boss = null;
+          bossJustCleared = true;
+          unlockAchievement('boss1');
+          bossKillCount += 1;
+          if (bossKillCount >= 3) unlockAchievement('bossslayer3');
+          updateHud();
+        }
+      }
+
+      for (const b of bricks){
+        if (!b.alive) continue;
+        if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+            ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h){
+          b.hp -= 1;
+          b.flash = 1;
+          if (b.hp <= 0){
+            b.alive = false;
+            combo += 1;
+            unlockAchievement('first_brick');
+            const gained = 10 * Math.min(combo, 8);
+            score += gained;
+            popValue(scoreEl);
+            spawnFloater(b.x + b.w/2, b.y, '+' + gained);
+            showCombo();
+            spawnParticles(b.x + b.w/2, b.y + b.h/2, fire ? '#ff9f4a' : b.color, 10);
+            maybeSpawnPowerup(b.x + b.w/2, b.y + b.h/2);
+            if (bomb) explodeAt(b.x + b.w/2, b.y + b.h/2, brickW*1.5);
+            if (now < ball.chainUntil) chainDestroy(b.x + b.w/2, b.y + b.h/2, 2);
+            awardGoldenBonus(b);
+          }
+          sfx.brick(Math.min(combo,10));
+          updateHud();
+
+          if (!fire){
+            const overlapLeft = (ball.x + ball.r) - b.x;
+            const overlapRight = (b.x + b.w) - (ball.x - ball.r);
+            const overlapTop = (ball.y + ball.r) - b.y;
+            const overlapBottom = (b.y + b.h) - (ball.y - ball.r);
+            const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+            if (minOverlap === overlapLeft || minOverlap === overlapRight) ball.vx *= -1;
+            else ball.vy *= -1;
+            break;
+          }
+        }
+      }
+    });
+
+    balls = balls.filter(b=>{
+      if (b.launched && !b.stuck && b.y - b.r > H){
+        if (paddle.shieldActive && balls.filter(x=>x.launched && !x.stuck).length <= 1){
+          paddle.shieldActive = false;
+          sfx.shield();
+          shake = Math.max(shake, 5);
+          unlockAchievement('shieldsave');
+          b.y = paddle.y - b.r - 0.5;
+          b.vy = -Math.abs(b.vy || b.speed);
+          b.x = paddle.x + paddle.w/2;
+          return true;
+        }
+        return false;
+      }
+      return true;
+    });
+
+    if (balls.length === 0){
+      loseLife();
+      if (!running) return;
+    }
+
+    powerups.forEach(p => p.y += p.vy);
+    powerups = powerups.filter(p=>{
+      if (p.y - p.r > H) return false;
+      if (p.y + p.r >= paddle.y && p.y - p.r <= paddle.y + paddle.h &&
+          p.x >= paddle.x && p.x <= paddle.x + paddle.w){
+        applyPowerup(p.type);
+        if (p.type === 'coin') spawnFloater(p.x, p.y, '+100');
+        return false;
+      }
+      return true;
+    });
+
+    particles.forEach(p=>{ p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= 0.04; });
+    particles = particles.filter(p => p.life > 0);
+
+    const stageCleared = boss ? false : (bricks.length > 0 && bricks.every(b=>!b.alive));
+    const bossCleared = isBossLevel(level) && !boss && bricks.length === 0 && bossJustCleared;
+    if (stageCleared || bossCleared){ bossJustCleared = false; nextLevel(); }
+
+    updateStatusChips();
+    draw(t);
+    rafId = requestAnimationFrame(step);
+  }
+
+  function gameOver(won){
+    running = false;
+    cancelAnimationFrame(rafId);
+    bossBarEl.classList.remove('show');
+    bossLabelEl.classList.remove('show');
+    blackHole = null;
+    overlay.classList.remove('hidden');
+    overlayTitle.textContent = won ? '클리어!' : '게임 오버';
+    const isBest = score >= highScore && score > 0;
+    overlayText.style.textAlign = 'center';
+    overlayText.innerHTML = `최종 점수 <b style="color:#ffd166">${score}</b>점${isBest ? ' <br><b style="color:#06d6a0">신기록입니다!</b>' : `<br>최고 점수 ${highScore}점`}<br>다시 도전해볼까요?`;
+    startBtn.textContent = '다시 시작';
+  }
+
+  function startGame(){
+    ensureAudio();
+    mode = 'solo';
+    cancelAnimationFrame(vsRafId);
+    hudEl.style.display = 'flex';
+    vsScoreTopEl.classList.remove('show');
+    vsScoreBottomEl.classList.remove('show');
+    vsMidEl.classList.remove('show');
+    score = 0; lives = 3; level = 1; rows = 5;
+    newBestShown = false;
+    bossJustCleared = false;
+    livesAtLevelStart = 3;
+    overlay.classList.add('hidden');
+    buildBricks();
+    resetPaddleBall();
+    updateHud();
+    running = true;
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(step);
+  }
+
+  function startCoop(){
+    ensureAudio();
+    mode = 'coop';
+    cancelAnimationFrame(vsRafId);
+    hudEl.style.display = 'flex';
+    vsScoreTopEl.classList.remove('show');
+    vsScoreBottomEl.classList.remove('show');
+    vsMidEl.classList.remove('show');
+    score = 0; lives = 3; level = 1; rows = 5;
+    newBestShown = false;
+    bossJustCleared = false;
+    livesAtLevelStart = 3;
+    overlay.classList.add('hidden');
+    buildBricks();
+    resetPaddleBall();
+    updateHud();
+    running = true;
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(step);
+  }
+
+  // ---------- 2인 대결 모드 ----------
+  function serveVsBall(direction){
+    vsBall = {
+      x: W/2, y: H/2, r: 7,
+      vx: (Math.random()*2-1) * 2.6,
+      vy: (direction || (Math.random()<0.5?1:-1)) * 4.6,
+      trail: []
+    };
+  }
+
+  function startVersus(){
+    ensureAudio();
+    mode = 'versus';
+    running = false;
+    cancelAnimationFrame(rafId);
+    bossBarEl.classList.remove('show');
+    bossLabelEl.classList.remove('show');
+    hudEl.style.display = 'none';
+    statusEl.innerHTML = '';
+    vsScoreTopEl.classList.add('show');
+    vsScoreBottomEl.classList.add('show');
+    vsMidEl.classList.add('show');
+    vsScoreTop = 0; vsScoreBottom = 0;
+    vsScoreTopEl.textContent = '0';
+    vsScoreBottomEl.textContent = '0';
+    paddle.w = paddle.baseW = 78;
+    paddle.x = W/2 - paddle.w/2;
+    paddle.y = H - 30;
+    paddleTop.w = 78;
+    paddleTop.x = W/2 - paddleTop.w/2;
+    paddleTop.y = 18;
+    particles = [];
+    overlay.classList.add('hidden');
+    serveVsBall();
+    cancelAnimationFrame(vsRafId);
+    vsRafId = requestAnimationFrame(versusStep);
+  }
+
+  function versusGameOver(topWon){
+    mode = 'solo';
+    cancelAnimationFrame(vsRafId);
+    overlay.classList.remove('hidden');
+    overlayTitle.textContent = topWon ? '위쪽 승리! 🎉' : '아래쪽 승리! 🎉';
+    overlayText.style.textAlign = 'center';
+    overlayText.innerHTML = `최종 스코어 <b style="color:#ffd166">${vsScoreBottom} : ${vsScoreTop}</b><br>한 판 더 붙어볼까요?`;
+  }
+
+  function versusStep(t){
+    if (mode !== 'versus') return;
+    const b = vsBall;
+
+    if (b){
+      b.trail.push({x:b.x, y:b.y});
+      if (b.trail.length > 6) b.trail.shift();
+      b.x += b.vx;
+      b.y += b.vy;
+
+      if (b.x - b.r < 0){ b.x = b.r; b.vx *= -1; sfx.wall(); }
+      if (b.x + b.r > W){ b.x = W - b.r; b.vx *= -1; sfx.wall(); }
+
+      // 아래쪽 패들(플레이어1) 충돌
+      if (b.vy > 0 && b.y + b.r >= paddle.y && b.y + b.r <= paddle.y + paddle.h + 8 &&
+          b.x >= paddle.x - b.r && b.x <= paddle.x + paddle.w + b.r){
+        const hitPos = (b.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+        const speed = Math.min(Math.hypot(b.vx,b.vy) * 1.03, 11);
+        b.vx = Math.sin(hitPos*(Math.PI/3)) * speed;
+        b.vy = -Math.abs(Math.cos(hitPos*(Math.PI/3)) * speed);
+        b.y = paddle.y - b.r - 0.5;
+        paddle.squash = 1;
+        sfx.paddle();
+      }
+      // 위쪽 패들(플레이어2) 충돌
+      if (b.vy < 0 && b.y - b.r <= paddleTop.y + paddleTop.h && b.y - b.r >= paddleTop.y - 8 &&
+          b.x >= paddleTop.x - b.r && b.x <= paddleTop.x + paddleTop.w + b.r){
+        const hitPos = (b.x - (paddleTop.x + paddleTop.w/2)) / (paddleTop.w/2);
+        const speed = Math.min(Math.hypot(b.vx,b.vy) * 1.03, 11);
+        b.vx = Math.sin(hitPos*(Math.PI/3)) * speed;
+        b.vy = Math.abs(Math.cos(hitPos*(Math.PI/3)) * speed);
+        b.y = paddleTop.y + paddleTop.h + b.r + 0.5;
+        paddleTop.squash = 1;
+        sfx.paddle();
+      }
+
+      if (b.y - b.r > H){
+        vsScoreTop += 1;
+        vsScoreTopEl.textContent = vsScoreTop;
+        spawnParticles(b.x, H-10, '#ffd166', 12);
+        sfx.lose();
+        vsBall = null;
+        if (vsScoreTop >= VS_TARGET){ versusGameOver(true); return; }
+        vsServeTimer = setTimeout(()=> serveVsBall(-1), 700);
+      } else if (b.y + b.r < 0){
+        vsScoreBottom += 1;
+        vsScoreBottomEl.textContent = vsScoreBottom;
+        spawnParticles(b.x, 10, '#ffd166', 12);
+        sfx.lose();
+        vsBall = null;
+        if (vsScoreBottom >= VS_TARGET){ versusGameOver(false); return; }
+        vsServeTimer = setTimeout(()=> serveVsBall(1), 700);
+      }
+    }
+
+    particles.forEach(p=>{ p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= 0.04; });
+    particles = particles.filter(p => p.life > 0);
+    if (paddle.squash > 0) paddle.squash *= 0.85;
+    if (paddleTop.squash > 0) paddleTop.squash *= 0.85;
+
+    versusDraw(t);
+    vsRafId = requestAnimationFrame(versusStep);
+  }
+
+  function versusDraw(t){
+    ctx.clearRect(-10,-10,W+20,H+20);
+    const tt = (t||0)/1000;
+    const n1x = W*0.3 + Math.sin(tt*0.15)*W*0.15;
+    const n1y = H*0.25 + Math.cos(tt*0.12)*H*0.1;
+    const g1 = ctx.createRadialGradient(n1x, n1y, 0, n1x, n1y, W*0.55);
+    g1.addColorStop(0, 'rgba(131,56,236,0.14)');
+    g1.addColorStop(1, 'rgba(131,56,236,0)');
+    ctx.fillStyle = g1;
+    ctx.fillRect(0,0,W,H);
+
+    stars.forEach(s=>{
+      const tw = 0.4 + 0.4*Math.sin((t||0)/700 + s.ph);
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = '#3a4570';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    particles.forEach(p=>{
+      ctx.globalAlpha = Math.max(p.life,0);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // 패들 (아래: 플레이어1, 위: 플레이어2)
+    ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 14; ctx.fillStyle = '#ffd166';
+    drawRoundRect(paddle.x, paddle.y + paddle.squash*2, paddle.w, paddle.h - paddle.squash*4, 6);
+    ctx.fill();
+    ctx.shadowColor = '#4cc9f0'; ctx.shadowBlur = 14; ctx.fillStyle = '#4cc9f0';
+    drawRoundRect(paddleTop.x, paddleTop.y - paddleTop.squash*2, paddleTop.w, paddleTop.h - paddleTop.squash*4, 6);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    if (vsBall){
+      vsBall.trail.forEach((tp,i)=>{
+        ctx.globalAlpha = (i/vsBall.trail.length) * 0.28;
+        ctx.beginPath(); ctx.fillStyle = '#f4f7fb';
+        ctx.arc(tp.x, tp.y, vsBall.r*0.8, 0, Math.PI*2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      ctx.shadowColor = '#f4f7fb'; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.fillStyle = '#f4f7fb';
+      ctx.arc(vsBall.x, vsBall.y, vsBall.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  versusBtn.addEventListener('click', startVersus);
+  coopBtn.addEventListener('click', startCoop);
+
+  startBtn.addEventListener('click', startGame);
+
+  function movePaddleTo(clientX){
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    paddle.x = Math.min(Math.max(x - paddle.w/2, 0), W - paddle.w);
+  }
+
+  function movePaddle2To(clientX){
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    paddle2.x = Math.min(Math.max(x - paddle2.w/2, 0), W - paddle2.w);
+  }
+
+  function moveTopPaddleTo(clientX){
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    paddleTop.x = Math.min(Math.max(x - paddleTop.w/2, 0), W - paddleTop.w);
+  }
+
+  function handleVersusTouches(touches){
+    const rect = canvas.getBoundingClientRect();
+    for (const t of touches){
+      const y = t.clientY - rect.top;
+      if (y < H/2) moveTopPaddleTo(t.clientX);
+      else movePaddleTo(t.clientX);
+    }
+  }
+
+  function handleCoopTouches(touches){
+    const rect = canvas.getBoundingClientRect();
+    for (const t of touches){
+      const x = t.clientX - rect.left;
+      if (x < W/2) movePaddleTo(t.clientX);
+      else movePaddle2To(t.clientX);
+    }
+  }
+
+  function launchAll(){ balls.forEach(b => { if (!b.launched || b.stuck) launchBall(b); }); }
+
+  canvas.addEventListener('touchstart', (e)=>{
+    e.preventDefault();
+    if (mode === 'versus'){ handleVersusTouches(e.touches); return; }
+    if (mode === 'coop'){ handleCoopTouches(e.touches); launchAll(); return; }
+    movePaddleTo(e.touches[0].clientX);
+    launchAll();
+  }, {passive:false});
+
+  canvas.addEventListener('touchmove', (e)=>{
+    e.preventDefault();
+    if (mode === 'versus'){ handleVersusTouches(e.touches); return; }
+    if (mode === 'coop'){ handleCoopTouches(e.touches); return; }
+    movePaddleTo(e.touches[0].clientX);
+  }, {passive:false});
+
+  let mouseDown = false;
+  canvas.addEventListener('mousedown', (e)=>{
+    mouseDown = true;
+    if (mode === 'versus'){
+      const rect = canvas.getBoundingClientRect();
+      if (e.clientY - rect.top < H/2) moveTopPaddleTo(e.clientX);
+      else movePaddleTo(e.clientX);
+      return;
+    }
+    if (mode === 'coop'){
+      const rect = canvas.getBoundingClientRect();
+      if (e.clientX - rect.left < W/2) movePaddleTo(e.clientX);
+      else movePaddle2To(e.clientX);
+      launchAll();
+      return;
+    }
+    movePaddleTo(e.clientX);
+    launchAll();
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if (!mouseDown) return;
+    if (mode === 'versus'){
+      const rect = canvas.getBoundingClientRect();
+      if (e.clientY - rect.top < H/2) moveTopPaddleTo(e.clientX);
+      else movePaddleTo(e.clientX);
+      return;
+    }
+    if (mode === 'coop'){
+      const rect = canvas.getBoundingClientRect();
+      if (e.clientX - rect.left < W/2) movePaddleTo(e.clientX);
+      else movePaddle2To(e.clientX);
+      return;
+    }
+    movePaddleTo(e.clientX);
+  });
+  window.addEventListener('mouseup', ()=> mouseDown = false);
+
+  window.addEventListener('keydown', (e)=>{
+    if (mode === 'versus'){
+      if (e.key === 'ArrowLeft') paddle.x = Math.max(paddle.x - 24, 0);
+      if (e.key === 'ArrowRight') paddle.x = Math.min(paddle.x + 24, W - paddle.w);
+      if (e.key === 'a' || e.key === 'A') paddleTop.x = Math.max(paddleTop.x - 24, 0);
+      if (e.key === 'd' || e.key === 'D') paddleTop.x = Math.min(paddleTop.x + 24, W - paddleTop.w);
+      return;
+    }
+    if (mode === 'coop'){
+      if (e.key === 'ArrowLeft') paddle.x = Math.max(paddle.x - 24, 0);
+      if (e.key === 'ArrowRight') paddle.x = Math.min(paddle.x + 24, W - paddle.w);
+      if (e.key === 'a' || e.key === 'A') paddle2.x = Math.max(paddle2.x - 24, 0);
+      if (e.key === 'd' || e.key === 'D') paddle2.x = Math.min(paddle2.x + 24, W - paddle2.w);
+      if (e.key === ' ') { e.preventDefault(); launchAll(); }
+      return;
+    }
+    if (e.key === 'ArrowLeft') paddle.x = Math.max(paddle.x - 24, 0);
+    if (e.key === 'ArrowRight') paddle.x = Math.min(paddle.x + 24, W - paddle.w);
+    if (e.key === ' ') { e.preventDefault(); launchAll(); }
+  });
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw(0);
+})();
+</script>
+</body>
+</html>
