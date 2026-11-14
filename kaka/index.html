@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>카카 특공대 INFINITE</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0a0e17; font-family:-apple-system,'Malgun Gothic',sans-serif; }
+  #app { position:relative; width:100vw; height:100vh; overflow:hidden; }
+  canvas { display:block; touch-action:none; }
+  #gameCanvas { position:absolute; top:0; left:0; }
+
+  /* ---------- start screen ---------- */
+  #startScreen { position:absolute; inset:0; z-index:15; display:flex; flex-direction:column; align-items:center;
+    background:linear-gradient(160deg,#0f1a2e,#1a2744 60%,#2a1f4a); color:#fff; padding:20px 16px 16px; overflow-y:auto; touch-action:pan-y; }
+  #startScreen h1 { font-size:26px; text-align:center; margin-top:10px; text-shadow:0 0 12px #ff6b3d; letter-spacing:1px; }
+  #startScreen .sub { color:#9db3d6; font-size:12px; margin-top:4px; margin-bottom:14px; text-align:center; }
+  #recordRow { display:flex; gap:10px; margin-bottom:14px; }
+  .recBox { background:#ffffff14; border:1px solid #ffffff22; border-radius:10px; padding:8px 14px; text-align:center; }
+  .recBox .n { font-size:16px; font-weight:700; color:#ffd35c; }
+  .recBox .l { font-size:10px; color:#9db3d6; }
+  #carGrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:420px; }
+  #dogLabel { color:#9db3d6; font-size:11px; margin:14px 0 6px; width:100%; max-width:420px; }
+  #dogStrip { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%; max-width:420px; }
+  .dogCard { text-align:center; border-radius:12px; border:2px solid #ffffff22; background:#ffffff10; padding:8px 4px; position:relative; }
+  .dogCard.sel { border-color:#ffd35c; background:#ffd35c22; }
+  .dogCard .em { font-size:22px; }
+  .dogCard .nm { font-size:9px; margin-top:2px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dogCard .lock { position:absolute; inset:0; background:#00000090; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:8px; color:#ffd35c; flex-direction:column; }
+  .carCard { background:#ffffff10; border:2px solid #ffffff22; border-radius:12px; padding:10px 6px; text-align:center; position:relative; }
+  .carCard.sel { border-color:#ffd35c; background:#ffd35c22; }
+  .carCard .em { font-size:30px; }
+  .carCard .nm { font-size:12px; margin-top:2px; font-weight:700; }
+  .carCard .st { font-size:9px; color:#9db3d6; margin-top:2px; line-height:1.4; }
+  .carCard .lock { position:absolute; inset:0; background:#00000090; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; color:#ffd35c; }
+  #startBtn { margin-top:16px; width:100%; max-width:420px; padding:14px; font-size:17px; font-weight:700; color:#12203a;
+    background:linear-gradient(180deg,#ffe27a,#ffab3d); border:none; border-radius:14px; box-shadow:0 4px 0 #b5701a; }
+  #startBtn:active { transform:translateY(2px); box-shadow:0 2px 0 #b5701a; }
+  #carBoxBtn { margin-top:14px; width:100%; max-width:420px; padding:12px; font-size:13px; font-weight:700; color:#ffd35c;
+    background:#ffd35c14; border:2px dashed #ffd35c66; border-radius:14px; }
+  #carBoxBtn:active { transform:translateY(1px); }
+  #carBoxModal { position:absolute; inset:0; background:#00000092; display:none; align-items:center; justify-content:center; z-index:25; }
+  #carBoxModal .box { background:#1a2744; border:1px solid #ffffff33; border-radius:16px; padding:22px; width:78%; max-width:300px; text-align:center; color:#fff; }
+  #carBoxModal .tag { font-size:11px; color:#9db3d6; }
+  #carBoxModal .em { font-size:56px; margin-top:6px; }
+  #carBoxModal .nm { font-size:16px; font-weight:700; margin-top:4px; }
+  #carBoxModal .sub { font-size:11px; color:#9db3d6; margin-top:4px; }
+  #carBoxOkBtn { margin-top:14px; width:100%; padding:10px; font-size:14px; font-weight:700; color:#12203a;
+    background:linear-gradient(180deg,#ffe27a,#ffab3d); border:none; border-radius:10px; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:absolute; top:0; left:0; right:0; padding:8px 10px; pointer-events:none; z-index:5; }
+  #topRow { display:flex; align-items:center; gap:8px; }
+  #hpWrap { flex:1; height:16px; background:#00000066; border-radius:8px; overflow:hidden; border:1px solid #ffffff33; }
+  #hpBar { height:100%; width:100%; background:linear-gradient(90deg,#ff5252,#ff9f43); transition:width .15s; }
+  #timerBox { color:#fff; font-size:13px; font-weight:700; text-shadow:0 1px 2px #000; min-width:64px; text-align:center; }
+  #waveBox { color:#ffd35c; font-size:10px; text-align:center; text-shadow:0 1px 2px #000; }
+  #currRow { display:flex; gap:8px; margin-top:5px; }
+  .curBadge { background:#00000066; border-radius:8px; padding:2px 8px; font-size:11px; color:#fff; display:flex; align-items:center; gap:3px; }
+  #weaponRow { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; max-width:230px; }
+  .wIcon { background:#00000070; border:1px solid #ffffff33; border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:15px; position:relative; }
+  .wIcon .lv { position:absolute; bottom:-2px; right:-2px; background:#ffd35c; color:#12203a; font-size:8px; font-weight:700; border-radius:6px; padding:0 3px; }
+  #comboText { position:absolute; top:80px; left:50%; transform:translateX(-50%); color:#ffd35c; font-size:20px; font-weight:800; text-shadow:0 2px 4px #000; opacity:0; z-index:6; pointer-events:none; }
+  #toast { position:absolute; top:110px; left:50%; transform:translateX(-50%); background:#00000090; color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; opacity:0; z-index:6; pointer-events:none; white-space:nowrap; }
+  #bossBar { position:absolute; top:6px; left:50%; transform:translateX(-50%); width:70%; max-width:320px; z-index:6; display:none; text-align:center; }
+  #bossBar .nm { color:#ff6b6b; font-size:11px; font-weight:700; text-shadow:0 1px 2px #000; }
+  #bossBar .wrap { height:10px; background:#00000070; border-radius:6px; overflow:hidden; border:1px solid #ff6b6b55; }
+  #bossBar .fill { height:100%; width:100%; background:linear-gradient(90deg,#ff2d55,#ff6b3d); transition:width .15s; }
+
+  #minimap { position:absolute; top:8px; right:8px; width:88px; height:88px; border-radius:50%; border:2px solid #ffffff44; background:#00000060; z-index:5; }
+
+  /* ---------- controls ---------- */
+  #joyBase { position:absolute; left:22px; bottom:44px; width:104px; height:104px; border-radius:50%; background:#ffffff14; border:2px solid #ffffff33; z-index:5; touch-action:none; }
+  #joyStick { position:absolute; left:50%; top:50%; width:46px; height:46px; margin-left:-23px; margin-top:-23px; border-radius:50%; background:#ffffff55; border:2px solid #ffffff77; }
+  #boostBtn { position:absolute; right:26px; bottom:54px; width:74px; height:74px; border-radius:50%; z-index:5; touch-action:none;
+    background:radial-gradient(circle,#ffd35c,#ff8a3d); border:3px solid #ffffff55; color:#12203a; font-size:11px; font-weight:800; }
+  #boostBtn .cd { position:absolute; inset:0; border-radius:50%; background:#00000090; }
+  #dogThrowBtn { position:absolute; right:34px; bottom:142px; width:58px; height:58px; border-radius:50%; z-index:5; touch-action:none;
+    background:radial-gradient(circle,#c4b5fd,#7c3aed); border:3px solid #ffffff55; color:#fff; font-size:10px; font-weight:800; }
+
+  #levelUpModal { position:absolute; inset:0; background:#00000090; display:none; align-items:center; justify-content:center; z-index:20; }
+  #levelUpModal .box { background:#1a2744; border:1px solid #ffffff33; border-radius:16px; padding:16px; width:86%; max-width:360px; text-align:center; }
+  #levelUpModal h3 { color:#ffd35c; font-size:16px; margin-bottom:10px; }
+  .lvOpt { display:flex; align-items:center; gap:10px; background:#ffffff10; border:1px solid #ffffff22; border-radius:10px; padding:10px; margin-bottom:8px; color:#fff; text-align:left; }
+  .lvOpt .ic { font-size:24px; }
+  .lvOpt .tx b { font-size:13px; } .lvOpt .tx div { font-size:10px; color:#9db3d6; }
+
+  #endScreen { position:absolute; inset:0; background:#0a0e17ee; display:none; flex-direction:column; align-items:center; justify-content:center; color:#fff; z-index:30; padding:20px; overflow:hidden; }
+  #confettiLayer { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+  .confetti { position:absolute; top:-20px; width:8px; height:14px; opacity:0.9; animation:confettiFall linear forwards; }
+  @keyframes confettiFall { to { transform:translateY(115vh) rotate(540deg); opacity:0.3; } }
+  @keyframes popIn { 0%{ transform:scale(0.4); opacity:0; } 70%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+  @keyframes fadeUp { from{ transform:translateY(14px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  @keyframes titleGlow { 0%,100%{ text-shadow:0 0 14px #ffd35c88; } 50%{ text-shadow:0 0 28px #ffd35cdd; } }
+  #endRank { font-size:13px; color:#ffd35c; margin-bottom:2px; animation:fadeUp 0.5s ease 0.15s both; }
+  #endScreen h2 { font-size:24px; color:#ffd35c; margin-bottom:6px; text-align:center; animation:popIn 0.5s ease both, titleGlow 1.6s ease-in-out 0.5s infinite; }
+  #endSub { font-size:12px; color:#9db3d6; margin-bottom:12px; text-align:center; animation:fadeUp 0.5s ease 0.25s both; }
+  #endStats { background:#ffffff10; border-radius:12px; padding:14px 20px; margin-bottom:16px; width:100%; max-width:320px; animation:fadeUp 0.5s ease 0.35s both; position:relative; z-index:1; }
+  #endStats div { display:flex; justify-content:space-between; font-size:13px; padding:4px 0; border-bottom:1px solid #ffffff14; }
+  #retryBtn { padding:14px 30px; font-size:16px; font-weight:700; color:#12203a; background:linear-gradient(180deg,#ffe27a,#ffab3d); border:none; border-radius:14px; position:relative; z-index:1; animation:fadeUp 0.5s ease 0.45s both; }
+  .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+</style>
+</head>
+<body>
+<h2 class="sr-only">차를 조종해 몰려오는 적들을 무찌르는 무한 서바이벌 드라이빙 슈팅 게임</h2>
+<div id="app">
+
+  <div id="startScreen">
+    <h1>🚗💥 카카 특공대 INFINITE</h1>
+    <div class="sub">차량을 골라 무한도로 10분 생존에 도전하세요</div>
+    <div id="recordRow">
+      <div class="recBox"><div class="n" id="recTime">0:00</div><div class="l">🏆 최고 생존</div></div>
+      <div class="recBox"><div class="n" id="recCoin">0</div><div class="l">🪙 보유 코인</div></div>
+      <div class="recBox"><div class="n" id="recAch">0/0</div><div class="l">🏅 업적</div></div>
+    </div>
+    <div id="carGrid"></div>
+    <div id="dogLabel">🐾 반려견 동반자 (스킬 보유)</div>
+    <div id="dogStrip"></div>
+    <button id="carBoxBtn">🎁 카 박스 열기</button>
+    <button id="startBtn">▶ 출격!</button>
+  </div>
+
+  <div id="carBoxModal">
+    <div class="box">
+      <div class="tag">🎁 카 박스 결과</div>
+      <div class="em" id="carBoxEmoji"></div>
+      <div class="nm" id="carBoxName"></div>
+      <div class="sub" id="carBoxSub"></div>
+      <button id="carBoxOkBtn">확인</button>
+    </div>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+  <canvas id="minimap" width="88" height="88" style="display:none"></canvas>
+
+  <div id="hud" style="display:none">
+    <div id="topRow">
+      <div id="hpWrap"><div id="hpBar"></div></div>
+      <div><div id="timerBox">0:00</div><div id="waveBox">WAVE 1</div></div>
+    </div>
+    <div id="currRow">
+      <div class="curBadge" id="dogBadge">🐕 <span id="dogNameTag"></span></div>
+      <div class="curBadge">✨ Lv.<span id="lvCount">1</span></div>
+      <div class="curBadge">🪙 <span id="coinCount">0</span></div>
+      <div class="curBadge">💎 <span id="gemCount">0</span></div>
+      <div class="curBadge">💀 <span id="killCount">0</span></div>
+      <div class="curBadge" id="hudBoxBtn" style="pointer-events:auto; cursor:pointer;">🎁 박스</div>
+    </div>
+    <div id="weaponRow"></div>
+  </div>
+  <div id="comboText"></div>
+  <div id="toast"></div>
+  <div id="bossBar"><div class="nm" id="bossName">보스</div><div class="wrap"><div class="fill" id="bossFill"></div></div></div>
+
+  <div id="joyBase" style="display:none"><div id="joyStick"></div></div>
+  <button id="boostBtn" style="display:none">⚡BOOST<div class="cd" id="boostCd" style="display:none"></div></button>
+  <button id="dogThrowBtn" style="display:none">🐕 던지기</button>
+
+  <div id="levelUpModal"><div class="box"><h3>🎁 무기 강화!</h3><div id="lvOptions"></div></div></div>
+
+  <div id="endScreen">
+    <div id="confettiLayer"></div>
+    <div id="endRank"></div>
+    <h2 id="endTitle">💥 격파당했습니다</h2>
+    <div id="endSub"></div>
+    <div id="endStats"></div>
+    <button id="retryBtn">🔄 다시 도전</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- persistent profile ---------------- */
+var profile = { bestTime:0, totalCoins:0, unlockedCars:['taxi'], unlockedDogs:['jindo'], killsAll:0, achievements:[], lifetimeCoins:0 };
+async function loadProfile(){
+  try{
+    var r = await window.storage.get('profile', false);
+    if(r && r.value){ var p = JSON.parse(r.value); profile = Object.assign(profile, p); }
+  }catch(e){}
+  renderStart();
+}
+async function saveProfile(){
+  try{ await window.storage.set('profile', JSON.stringify(profile), false); }catch(e){}
+}
+
+/* ---------------- data ---------------- */
+var CARS = [
+  {id:'taxi',   emoji:'🚕', name:'택시',       speed:250, hp:100, turn:8.5, cost:0,   color:'#ffd35c', special:'magnet',     specialName:'코인 자석'},
+  {id:'police', emoji:'🚓', name:'경찰차',     speed:285, hp:90,  turn:9.0, cost:100, color:'#60a5fa', special:'siren',      specialName:'사이렌 둔화'},
+  {id:'sports', emoji:'🚗', name:'스포츠카',   speed:320, hp:70,  turn:10.5,cost:250, color:'#ff5252', special:'nitro',      specialName:'니트로 부스트'},
+  {id:'suv',    emoji:'🚙', name:'SUV',        speed:215, hp:150, turn:6.5, cost:200, color:'#94a3b8', special:'armor',      specialName:'강화 차체'},
+  {id:'truck',  emoji:'🚛', name:'대형트럭',   speed:175, hp:210, turn:5.0, cost:300, color:'#fb923c', special:'ram',        specialName:'차체 박치기'},
+  {id:'racer',  emoji:'🏎️', name:'레이싱카',   speed:355, hp:60,  turn:11.0,cost:500, color:'#4ade80', special:'slipstream', specialName:'슬립스트림'},
+  {id:'future', emoji:'🚀', name:'미래형차',   speed:290, hp:120, turn:9.5, cost:800, boostBonus:true, color:'#22d3ee', special:'shield', specialName:'에너지 실드'},
+  {id:'legend', emoji:'👑', name:'전설차',     speed:305, hp:190, turn:9.5, cost:1500, color:'#ffd700', special:'revive', specialName:'불사조'}
+];
+var SPECIAL_DESC = {
+  magnet:'코인/보석을 더 넓게 끌어당김', siren:'주기적으로 주변 적 둔화', nitro:'부스터 중 공격력 상승',
+  armor:'받는 피해 감소', ram:'충돌한 적에게 반격 피해', slipstream:'고속 주행 중 공격력 상승',
+  shield:'주기적으로 피해 1회 무효화', revive:'한 번 죽을 위기에서 부활 (판당 1회)'
+};
+
+var DOGS = [
+  {id:'jindo',        emoji:'🐕', name:'진돗개',     cost:0,   color:'#ffd35c', desc:'경험치 +10%',        bonus:{xpMul:1.10}},
+  {id:'golden',       emoji:'🐩', name:'골든리트리버', cost:60,  color:'#fbbf24', desc:'코인/보석 자석 강화', bonus:{magnetMul:1.4}},
+  {id:'bulldog',      emoji:'🐶', name:'불도그',     cost:80,  color:'#94a3b8', desc:'최대 체력 +20%',     bonus:{hpMul:1.2}},
+  {id:'chihuahua',    emoji:'🦮', name:'치와와',     cost:80,  color:'#f472b6', desc:'이동속도 +10%',      bonus:{speedMul:1.1}},
+  {id:'poodle',       emoji:'🐺', name:'푸들',       cost:100, color:'#c084fc', desc:'무기 쿨타임 -10%',   bonus:{weaponCdMul:0.9}},
+  {id:'husky',        emoji:'🐕', name:'허스키',     cost:120, color:'#38bdf8', desc:'부스터 충전 25% 빠름', bonus:{boostCdMul:0.75}},
+  {id:'dachshund',    emoji:'🐩', name:'닥스훈트',   cost:120, color:'#fb923c', desc:'코인 획득 +15%',     bonus:{coinMul:1.15}},
+  {id:'corgi',        emoji:'🐶', name:'코기',       cost:140, color:'#facc15', desc:'회전 속도 +15%',     bonus:{turnMul:1.15}},
+  {id:'shepherd',     emoji:'🦮', name:'저먼셰퍼드', cost:160, color:'#64748b', desc:'받는 피해 -15%',     bonus:{contactDmgMul:0.85}},
+  {id:'doberman',     emoji:'🐺', name:'도베르만',   cost:180, color:'#334155', desc:'공격력 +10%',        bonus:{dmgMul:1.1}},
+  {id:'samoyed',      emoji:'🐕', name:'사모예드',   cost:180, color:'#e2e8f0', desc:'보석 획득 확률 +6%p', bonus:{gemChanceAdd:0.06}},
+  {id:'shiba',        emoji:'🐩', name:'시바견',     cost:200, color:'#f97316', desc:'레벨업 시 체력 15% 회복', bonus:{reviveHeal:0.15}},
+  {id:'beagle',       emoji:'🐶', name:'비글',       cost:200, color:'#a3e635', desc:'콤보 유지시간 +0.8초', bonus:{comboWindowAdd:0.8}},
+  {id:'greyhound',    emoji:'🦮', name:'그레이하운드', cost:220, color:'#22d3ee', desc:'최고속도 +15%',      bonus:{speedMul:1.15}},
+  {id:'saintbernard', emoji:'🐺', name:'세인트버나드', cost:240, color:'#a78bfa', desc:'체력 재생 속도 80% 증가', bonus:{regenMul:1.8}},
+  {id:'rottweiler',   emoji:'🐕', name:'로트와일러', cost:260, color:'#7f1d1d', desc:'충돌한 적에게 반격 피해', bonus:{ramDmg:30}},
+  {id:'bordercollie', emoji:'🐩', name:'보더콜리',   cost:280, color:'#0ea5e9', desc:'경험치 +15%',        bonus:{xpMul:1.15}},
+  {id:'dalmatian',    emoji:'🐶', name:'달마시안',   cost:300, color:'#e2e8f0', desc:'콤보 유지시간 +1.2초', bonus:{comboWindowAdd:1.2}},
+  {id:'pug',          emoji:'🦮', name:'퍼그',       cost:320, color:'#d97706', desc:'코인 획득 +20%',     bonus:{coinMul:1.2}},
+  {id:'maltese',      emoji:'🐺', name:'말티즈',     cost:400, color:'#f8fafc', desc:'카 박스 비용 -30🪙', bonus:{boxDiscount:30}}
+];
+
+var ACHIEVEMENTS = [
+  {id:'first_kill',   name:'첫 처치',        emoji:'🎯'},
+  {id:'combo_master',  name:'콤보 마스터',     emoji:'🔥'},
+  {id:'boss_slayer',   name:'보스 슬레이어',   emoji:'👑'},
+  {id:'golden_hunter', name:'황금 사냥꾼',     emoji:'✨'},
+  {id:'fusion_success',name:'합체 성공',       emoji:'💥'},
+  {id:'cosmic_collapse',name:'우주 붕괴 마스터',emoji:'🌌'},
+  {id:'weapon_collector',name:'무기 수집가',   emoji:'🧰'},
+  {id:'survivor',      name:'생존자 (5분)',    emoji:'🛡️'},
+  {id:'finisher',      name:'완주자',          emoji:'🏁'},
+  {id:'car_collector', name:'차고 콜렉터',     emoji:'🚗'},
+  {id:'dog_walker',    name:'도그워커',        emoji:'🐾'},
+  {id:'millionaire',   name:'백만장자',        emoji:'💰'}
+];
+function unlockAchievement(id){
+  if(profile.achievements.indexOf(id)>=0) return;
+  profile.achievements.push(id);
+  saveProfile();
+  var a = ACHIEVEMENTS.find(function(x){return x.id===id;});
+  if(a){ toast('🏆 업적 달성: '+a.emoji+' '+a.name); sfx.levelup(); }
+}
+
+var WDEF = {
+  gun:      {name:'기관포',   emoji:'🔫', cd:0.28, dmg:12, range:440, evName:'폭발기관포', evEmoji:'🔥'},
+  missile:  {name:'미사일',   emoji:'🚀', cd:1.5,  dmg:34, range:620, homing:true, evName:'미사일 폭격', evEmoji:'🚀'},
+  lightning:{name:'번개',     emoji:'⚡', cd:1.05, dmg:17, range:400, chain:3, evName:'번개폭풍', evEmoji:'🌩️'},
+  flame:    {name:'화염',     emoji:'🔥', cd:0.18, dmg:4,  radius:95, aura:true, auraColor:'#ff6b3d55', evName:'업화', evEmoji:'🌋'},
+  ice:      {name:'얼음',     emoji:'❄️', cd:1.3,  dmg:11, range:410, slow:0.5, evName:'블리자드', evEmoji:'🌨️'},
+  bomb:     {name:'폭탄',     emoji:'💣', cd:2.1,  dmg:55, radius:125,delay:0.75, evName:'융단폭격', evEmoji:'💥'},
+  blackhole:{name:'블랙홀',   emoji:'🌀', cd:6.5,  dmg:7,  radius:145,duration:3, evName:'초대형 블랙홀', evEmoji:'🌌'},
+  meteor:   {name:'운석',     emoji:'☄️', cd:3.6,  dmg:75, radius:135, evName:'메테오샤워', evEmoji:'☄️'},
+  laser:    {name:'레이저',   emoji:'🔴', cd:0.55, dmg:24, range:540, evName:'레이저 캐논', evEmoji:'🟥'},
+  poison:   {name:'독가스',   emoji:'🧪', cd:0.18, dmg:3.2,radius:115, aura:true, auraColor:'#4ade8055', evName:'맹독가스', evEmoji:'☠️'},
+  saw:      {name:'회전톱',   emoji:'🪚', cd:0.16, dmg:5,  radius:85, aura:true, auraColor:'#94a3b855', evName:'디스트로이어', evEmoji:'⚙️'},
+  mine:     {name:'지뢰',     emoji:'🧨', cd:2.3,  dmg:65, radius:120, evName:'클레이모어', evEmoji:'💥'},
+  drone:    {name:'드론',     emoji:'🛰️', cd:0.85, dmg:15, range:400, evName:'드론 편대', evEmoji:'🛰️'}
+};
+var SIGNATURE_PAIRS = {
+  'flame+lightning': {name:'플라즈마', emoji:'🔮'},
+  'gun+missile': {name:'개틀링 미사일', emoji:'🎯'},
+  'bomb+ice': {name:'프로스트 봄', emoji:'🧊'},
+  'blackhole+meteor': {name:'중력 붕괴', emoji:'🕳️'},
+  'laser+saw': {name:'레이저 톱', emoji:'🔴🪚'},
+  'mine+poison': {name:'독가스 지뢰', emoji:'☠️🧨'}
+};
+
+var BIOMES = [
+  {name:'도심', bg:'#26314a', particle:null},
+  {name:'고속도로', bg:'#2c3a52', particle:'rain'},
+  {name:'사막', bg:'#5a4326', particle:'sand'},
+  {name:'설원', bg:'#3d5266', particle:'snow'},
+  {name:'화산', bg:'#4a2318', particle:'ember'},
+  {name:'우주', bg:'#0d0d24', particle:'star'},
+  {name:'외계도시', bg:'#2a1a44', particle:'star'},
+  {name:'무한도로', bg:'#141a2e', particle:'rain'}
+];
+
+var ENEMY_DEF = {
+  chaser:  {emoji:'🚙', hp:42,  spd:135, dmg:8,  w:1},
+  rammer:  {emoji:'🏎️', hp:52,  spd:115, dmg:15, dash:true, w:1},
+  truck:   {emoji:'🚚', hp:165, spd:70,  dmg:18, w:0.8},
+  drone:   {emoji:'🚁', hp:36,  spd:105, dmg:10, ranged:true, keep:230, w:0.8},
+  ufo:     {emoji:'🛸', hp:48,  spd:125, dmg:14, ranged:true, keep:260, erratic:true, w:0.7},
+  defense: {emoji:'🧱', hp:95,  spd:55,  dmg:9,  shield:true, w:0.6},
+  speedster:{emoji:'⚡', hp:26, spd:270, dmg:11, erratic:true, w:0.6},
+  boss:    {emoji:'👑', hp:1300,spd:82,  dmg:23, boss:true, w:0}
+};
+
+/* ---------------- canvas / state ---------------- */
+var canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+var mini = document.getElementById('minimap'), mctx = mini.getContext('2d');
+function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+addEventListener('resize', resize); resize();
+
+var W = {
+  running:false, t:0, wave:1, waveTimer:0, spawnTimer:0, killCount:0,
+  coins:0, gems:0, combo:0, comboTimer:0, dayNight:0, weatherTimer:0,
+  camX:0, camY:0, biomeIdx:0, biomeTimer:0, bossActive:null, particles:[], floaters:[], drops:[],
+  pickups:[], shakeMag:0, shakeT:0
+};
+var player, enemies=[], bullets=[], selectedCar='taxi', selectedDog='jindo';
+
+/* ---------------- start screen ---------------- */
+function renderStart(){
+  document.getElementById('recTime').textContent = fmtTime(profile.bestTime);
+  document.getElementById('recCoin').textContent = profile.totalCoins;
+  document.getElementById('recAch').textContent = profile.achievements.length+'/'+ACHIEVEMENTS.length;
+  var grid = document.getElementById('carGrid'); grid.innerHTML='';
+  CARS.forEach(function(c){
+    var unlocked = profile.unlockedCars.indexOf(c.id)>=0;
+    var div = document.createElement('div');
+    div.className = 'carCard' + (c.id===selectedCar?' sel':'');
+    div.style.borderColor = c.id===selectedCar ? '#ffd35c' : (c.color+'55');
+    div.style.background = c.id===selectedCar ? '#ffd35c22' : (c.color+'14');
+    div.innerHTML = '<div class="em">'+c.emoji+'</div><div class="nm">'+c.name+'</div>'+
+      '<div class="st">속도'+c.speed+' · HP'+c.hp+'<br>⭐'+c.specialName+'</div>' +
+      (unlocked?'':'<div class="lock">🔒 '+c.cost+'🪙<br>탭하여 해금</div>');
+    div.onclick = function(){
+      if(unlocked){ selectedCar = c.id; renderStart(); }
+      else if(profile.totalCoins >= c.cost){
+        profile.totalCoins -= c.cost; profile.unlockedCars.push(c.id); selectedCar=c.id; saveProfile(); renderStart();
+        if(profile.unlockedCars.length>=CARS.length) unlockAchievement('car_collector');
+      } else { toast('코인이 부족합니다 ('+c.cost+'🪙 필요)'); }
+    };
+    grid.appendChild(div);
+  });
+  var dogStrip = document.getElementById('dogStrip'); dogStrip.innerHTML='';
+  DOGS.forEach(function(d){
+    var unlocked = profile.unlockedDogs.indexOf(d.id)>=0;
+    var div = document.createElement('div');
+    div.className = 'dogCard' + (d.id===selectedDog?' sel':'');
+    div.style.borderColor = d.id===selectedDog ? '#ffd35c' : (d.color+'66');
+    div.title = d.desc;
+    div.innerHTML = '<div class="em">'+d.emoji+'</div><div class="nm">'+d.name+'</div>' +
+      (unlocked?'':'<div class="lock">🔒<br>'+d.cost+'🪙</div>');
+    div.onclick = function(){
+      if(unlocked){ selectedDog = d.id; renderStart(); }
+      else if(profile.totalCoins >= d.cost){
+        profile.totalCoins -= d.cost; profile.unlockedDogs.push(d.id); selectedDog=d.id; saveProfile(); renderStart();
+        if(profile.unlockedDogs.length>=DOGS.length) unlockAchievement('dog_walker');
+      } else { toast('코인이 부족합니다 ('+d.cost+'🪙 필요)'); }
+    };
+    dogStrip.appendChild(div);
+  });
+  var boxBtn = document.getElementById('carBoxBtn');
+  var boxCost = getCarBoxCost();
+  boxBtn.textContent = '🎁 카 박스 열기 ('+boxCost+'🪙)';
+  boxBtn.style.opacity = profile.totalCoins>=boxCost ? 1 : 0.5;
+}
+function getCarBoxCost(){
+  var d = DOGS.find(function(x){return x.id===selectedDog;});
+  var discount = (d && d.bonus.boxDiscount) || 0;
+  return Math.max(50, CAR_BOX_COST - discount);
+}
+var CAR_BOX_COST = 150;
+var carBoxJustUnlocked = false;
+function openCarBox(){
+  initAudio();
+  carBoxJustUnlocked = false;
+  var cost = getCarBoxCost();
+  if(profile.totalCoins < cost){ toast('코인이 부족합니다 ('+cost+'🪙 필요)'); if(W.running) W.paused=false; return; }
+  profile.totalCoins -= cost;
+  if(W.running){ W.coins = Math.max(0, W.coins-cost); updateHUDCounts(); }
+  var locked = CARS.filter(function(c){ return profile.unlockedCars.indexOf(c.id)<0; });
+  var emoji, name, sub;
+  if(locked.length===0){
+    var bonus = 120;
+    profile.totalCoins += bonus;
+    if(W.running){ W.coins += bonus; updateHUDCounts(); }
+    emoji='🪙'; name='코인 +'+bonus; sub='이미 모든 차량을 보유중이라 코인으로 환급됐어요';
+  } else {
+    var weights = locked.map(function(c){ return 1/(c.cost+50); });
+    var total = weights.reduce(function(a,b){return a+b;},0);
+    var r = Math.random()*total, picked=locked[locked.length-1];
+    for(var i=0;i<locked.length;i++){ r-=weights[i]; if(r<=0){ picked=locked[i]; break; } }
+    profile.unlockedCars.push(picked.id);
+    if(profile.unlockedCars.length>=CARS.length) unlockAchievement('car_collector');
+    selectedCar = picked.id;
+    carBoxJustUnlocked = !W.running;
+    emoji=picked.emoji; name=picked.name+' 획득!'; sub= W.running ? '새 차량이 해금되어 바로 장착됐어요' : '새 차량이 해금되었습니다. 확인을 누르면 바로 출격해요!';
+    sfx.win();
+  }
+  saveProfile();
+  document.getElementById('carBoxEmoji').textContent = emoji;
+  document.getElementById('carBoxName').textContent = name;
+  document.getElementById('carBoxSub').textContent = sub;
+  document.getElementById('carBoxModal').style.display='flex';
+  renderStart();
+}
+document.getElementById('carBoxBtn').onclick = openCarBox;
+document.getElementById('carBoxOkBtn').onclick = function(){
+  document.getElementById('carBoxModal').style.display='none';
+  if(W.running){ W.paused=false; }
+  else if(carBoxJustUnlocked){ carBoxJustUnlocked=false; startGame(); }
+};
+document.getElementById('hudBoxBtn').onclick = function(){ if(W.running) W.paused=true; openCarBox(); };
+document.getElementById('startBtn').onclick = startGame;
+document.getElementById('retryBtn').onclick = function(){ document.getElementById('endScreen').style.display='none'; document.getElementById('startScreen').style.display='flex'; };
+
+function fmtTime(s){ s=Math.floor(s); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+/* ---------------- joystick ---------------- */
+var joy = {x:0,y:0,active:false};
+var joyBase = document.getElementById('joyBase'), joyStick = document.getElementById('joyStick');
+var joyId=null, joyCX=0, joyCY=0;
+function joyStart(e){
+  var t = e.changedTouches?e.changedTouches[0]:e;
+  joyId = e.changedTouches?t.identifier:'mouse';
+  var r = joyBase.getBoundingClientRect(); joyCX=r.left+r.width/2; joyCY=r.top+r.height/2;
+  joy.active=true; joyMove(e);
+}
+function joyMove(e){
+  if(!joy.active) return;
+  var t = e.changedTouches ? [].slice.call(e.changedTouches).find(function(tt){return tt.identifier===joyId;}) : e;
+  if(!t) return;
+  var dx=t.clientX-joyCX, dy=t.clientY-joyCY, d=Math.hypot(dx,dy), max=44;
+  if(d>max){ dx=dx/d*max; dy=dy/d*max; }
+  joy.x=dx/max; joy.y=dy/max;
+  joyStick.style.transform = 'translate('+dx+'px,'+dy+'px)';
+  e.preventDefault && e.preventDefault();
+}
+function joyEnd(e){ joy.active=false; joy.x=0; joy.y=0; joyStick.style.transform='translate(0,0)'; }
+joyBase.addEventListener('touchstart', joyStart, {passive:false});
+joyBase.addEventListener('touchmove', joyMove, {passive:false});
+joyBase.addEventListener('touchend', joyEnd);
+joyBase.addEventListener('mousedown', joyStart);
+addEventListener('mousemove', function(e){ if(joy.active) joyMove(e); });
+addEventListener('mouseup', joyEnd);
+
+var boostBtn = document.getElementById('boostBtn'), boostCdEl = document.getElementById('boostCd');
+function tryBoost(e){ e.preventDefault && e.preventDefault(); if(!W.running || !player) return; if(player.boostCd<=0){ player.boosting=0.9; player.boostCd=player.boostMax; sfx.boost(); } }
+boostBtn.addEventListener('touchstart', tryBoost, {passive:false});
+boostBtn.addEventListener('mousedown', tryBoost);
+
+var dogThrowBtn = document.getElementById('dogThrowBtn');
+function tryThrowDog(e){
+  e.preventDefault && e.preventDefault();
+  if(!W.running || !player || player.dogThrown || player.dogThrowCd>0) return;
+  var target = nearestEnemy(player.dogX, player.dogY, 520);
+  var tx, ty;
+  if(target){ tx=target.x; ty=target.y; }
+  else { tx = player.x + Math.cos(player.angle)*260; ty = player.y + Math.sin(player.angle)*260; }
+  player.dogThrown = true; player.dogThrowCd = player.dogThrowMax;
+  player.dogThrowPhase = 'out'; player.dogThrowT = 0;
+  player.dogThrowSX = player.dogX; player.dogThrowSY = player.dogY;
+  player.dogThrowTX = tx; player.dogThrowTY = ty;
+  sfx.boost();
+}
+dogThrowBtn.addEventListener('touchstart', tryThrowDog, {passive:false});
+dogThrowBtn.addEventListener('mousedown', tryThrowDog);
+
+/* ---------------- audio & juice ---------------- */
+var actx=null, noiseBuffer=null;
+function initAudio(){
+  if(actx) return;
+  try{
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    var buf = actx.createBuffer(1, Math.floor(actx.sampleRate*0.3), actx.sampleRate);
+    var data = buf.getChannelData(0);
+    for(var i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+    noiseBuffer = buf;
+  }catch(e){ actx=null; }
+}
+function tone(freq,dur,type,vol,glideTo){
+  if(!actx) return;
+  try{
+    var o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(freq, actx.currentTime);
+    if(glideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20,glideTo), actx.currentTime+dur);
+    g.gain.setValueAtTime(vol||0.15, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+function noiseBurst(dur,vol){
+  if(!actx||!noiseBuffer) return;
+  try{
+    var src=actx.createBufferSource(); src.buffer=noiseBuffer;
+    var g=actx.createGain(); g.gain.setValueAtTime(vol||0.2, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
+    var f=actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1300;
+    src.connect(f); f.connect(g); g.connect(actx.destination);
+    src.start(); src.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+var sfx = {
+  shoot:function(){ tone(760,0.05,'square',0.045); },
+  kill:function(){ tone(480,0.09,'sine',0.08,200); },
+  coin:function(){ tone(1100,0.06,'sine',0.06,1500); },
+  hurt:function(){ tone(150,0.16,'sawtooth',0.12,55); },
+  boost:function(){ tone(280,0.25,'sawtooth',0.08,720); },
+  explosion:function(){ noiseBurst(0.35,0.22); },
+  vortex:function(){ tone(90,0.5,'sine',0.09,45); },
+  levelup:function(){ tone(520,0.1,'sine',0.1,720); setTimeout(function(){tone(760,0.13,'sine',0.1,1050);},90); },
+  boss:function(){ tone(95,0.55,'sawtooth',0.15,55); },
+  win:function(){ [0,120,240,380,520,680].forEach(function(t,i){ setTimeout(function(){tone(520+i*130,0.25,'sine',0.13);},t); }); },
+  lose:function(){ tone(300,0.4,'sawtooth',0.15,80); }
+};
+function shake(mag,dur){ W.shakeMag=Math.max(W.shakeMag,mag); W.shakeT=Math.max(W.shakeT,dur); }
+function spawnBurst(x,y,color){
+  for(var i=0;i<7;i++){
+    var a=Math.random()*Math.PI*2, s=60+Math.random()*130;
+    W.particles.push({type:'burst',x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.4+Math.random()*0.2,color:color||'#ffd35c'});
+  }
+}
+function spawnPickup(type,x,y,value){
+  var ang=Math.random()*Math.PI*2, d=8+Math.random()*22;
+  W.pickups.push({type:type,x:x+Math.cos(ang)*d,y:y+Math.sin(ang)*d,value:value});
+}
+var EVENT_POOL = ['coinRain','doubleXp','enemyRush','frenzy','slowmo'];
+function triggerRandomEvent(){
+  var pool = EVENT_POOL.filter(function(e){return e!==W.lastEvent;});
+  var ev = pool[Math.floor(Math.random()*pool.length)];
+  W.lastEvent = ev;
+  W.eventActive = ev; W.eventT = 6; W.coinRainSpawnT = 0;
+  sfx.levelup();
+  if(ev==='coinRain'){ toast('🌟 코인 비 이벤트 시작!'); }
+  else if(ev==='doubleXp'){ toast('⭐ 경험치 2배 타임!'); }
+  else if(ev==='enemyRush'){ toast('👹 적 러시! 처치 보상 2배!'); for(var i=0;i<7;i++) spawnEnemy(); }
+  else if(ev==='frenzy'){ toast('🔥 프렌지! 공격력·속도 대폭 상승!'); }
+  else if(ev==='slowmo'){ toast('🐌 적 둔화 타임!'); enemies.forEach(function(e){ e.slow=6; }); }
+}
+
+/* ---------------- game start ---------------- */
+function startGame(){
+  initAudio();
+  var carDef = CARS.find(function(c){return c.id===selectedCar;});
+  var dogDef = DOGS.find(function(d){return d.id===selectedDog;}) || DOGS[0];
+  var db = dogDef.bonus || {};
+  player = {
+    x:0,y:0, angle:-Math.PI/2, hp:carDef.hp*(db.hpMul||1), maxhp:carDef.hp*(db.hpMul||1),
+    speed:0, maxSpeed:carDef.speed*(db.speedMul||1),
+    turn:carDef.turn*(db.turnMul||1), boosting:0, boostCd:0,
+    boostMax: (carDef.boostBonus?2.4:3.6)*(db.boostCdMul||1), invuln:0,
+    level:1, xp:0, xpNeeded:9, special:carDef.special, dog:dogDef,
+    shieldReady: carDef.special==='shield', shieldCd:8, sirenCd:3, revived:false,
+    weapons:[ {id:'gun', level:1, cd:0, evolved:false} ], emoji: carDef.emoji, color: carDef.color,
+    dogX:0, dogY:34, dogAtkCd:1, dogThrown:false, dogThrowCd:0, dogThrowMax:7,
+    dogThrowPhase:null, dogThrowT:0, dogThrowSX:0, dogThrowSY:0, dogThrowTX:0, dogThrowTY:0
+  };
+  enemies=[]; bullets=[]; W.particles=[]; W.floaters=[]; W.drops=[]; W.pickups=[]; W.shakeMag=0; W.shakeT=0; W.screenFlash=0;
+  W.t=0; W.wave=1; W.waveTimer=0; W.spawnTimer=1; W.killCount=0; W.coins=0; W.gems=0;
+  W.combo=0; W.comboTimer=0; W.biomeIdx=0; W.biomeTimer=0; W.bossActive=null; W.running=true; W.paused=false;
+  W.eventTimer=0; W.eventActive=null; W.eventT=0; W.coinRainSpawnT=0; W.lastEvent=null;
+  levelUpQueue = 0;
+  document.getElementById('lvCount').textContent = 1;
+
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('endScreen').style.display='none';
+  document.getElementById('hud').style.display='block';
+  document.getElementById('minimap').style.display='block';
+  document.getElementById('joyBase').style.display='block';
+  document.getElementById('boostBtn').style.display='block';
+  document.getElementById('dogThrowBtn').style.display='block';
+  toast('🏙️ '+BIOMES[0].name+' 지역 진입!');
+  updateWeaponUI();
+  document.getElementById('dogBadge').firstChild.textContent = player.dog.emoji+' ';
+  document.getElementById('dogNameTag').textContent = player.dog.name;
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- helpers ---------------- */
+function toast(msg){
+  var el = document.getElementById('toast'); el.textContent = msg; el.style.opacity=1;
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.style.opacity=0; }, 2200);
+}
+var COMBO_TITLES = [
+  {n:5,  text:'나이스!',      color:'#4ade80'},
+  {n:10, text:'더블킬!',      color:'#38bdf8'},
+  {n:15, text:'트리플킬!',    color:'#a78bfa'},
+  {n:20, text:'레인지!',      color:'#f472b6'},
+  {n:30, text:'언스토퍼블!',  color:'#fb923c'},
+  {n:50, text:'갓콤보!!',     color:'#ffd700'}
+];
+function showCombo(){
+  var el = document.getElementById('comboText');
+  var title=null;
+  for(var i=0;i<COMBO_TITLES.length;i++){ if(W.combo>=COMBO_TITLES[i].n) title=COMBO_TITLES[i]; }
+  if(title){ el.textContent=title.text; el.style.color=title.color; shake(6+COMBO_TITLES.indexOf(title)*2,0.2); sfx.levelup(); }
+  else { el.textContent='x'+W.combo+' COMBO!'; el.style.color='#ffd35c'; }
+  el.style.opacity=1;
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.style.opacity=0; }, 800);
+}
+function dist2(ax,ay,bx,by){ var dx=ax-bx,dy=ay-by; return dx*dx+dy*dy; }
+function nearestEnemy(x,y,range){
+  var best=null, bd=range*range;
+  for(var i=0;i<enemies.length;i++){ var e=enemies[i]; var d=dist2(x,y,e.x,e.y); if(d<bd){bd=d;best=e;} }
+  return best;
+}
+function getDef(w){ return w.fused ? w : WDEF[w.id]; }
+function droneOrbitPos(idx){
+  var oa = W.t*3 + idx*Math.PI;
+  return {x: player.x+Math.cos(oa)*50, y: player.y+Math.sin(oa)*50};
+}
+
+/* ---------------- weapon firing ---------------- */
+function fireWeapon(wp, dt){
+  var def = getDef(wp);
+  if(!def) return;
+  var evolved = wp.evolved;
+  var dmg = (def.dmg || 0) * (1 + (wp.level-1)*0.28) * (evolved?1.7:1);
+  if(player.special==='nitro' && player.boosting>0) dmg *= 1.5;
+  if(player.special==='slipstream' && player.speed > player.maxSpeed*0.75) dmg *= 1.3;
+  if(player.dog && player.dog.bonus.dmgMul) dmg *= player.dog.bonus.dmgMul;
+  if(W.eventActive==='frenzy') dmg *= 1.6;
+  var range = def.range || def.radius || 400;
+  if(def.aura){
+    var radius = evolved ? (def.radius*1.5) : def.radius;
+    enemies.forEach(function(e){ if(dist2(player.x,player.y,e.x,e.y) < radius*radius) damageEnemy(e, dmg*dt*6); });
+    spawnRing(player.x,player.y,radius,def.auraColor||'#ff6b3d55');
+    return;
+  }
+  wp.cd -= dt;
+  if(wp.cd>0) return;
+  var baseCd = wp.fused ? wp.baseCd : def.cd;
+  if(player.dog && player.dog.bonus.weaponCdMul) baseCd *= player.dog.bonus.weaponCdMul;
+  wp.cd = baseCd * (1 - Math.min(0.3,(wp.level-1)*0.05));
+  var target = nearestEnemy(player.x, player.y, range);
+  if(!target && !wp.fused && wp.id!=='blackhole' && wp.id!=='bomb' && wp.id!=='meteor' && wp.id!=='mine') return;
+
+  if(wp.id==='gun'){
+    var n = evolved?2:1;
+    for(var i=0;i<n;i++) spawnBullet(player.x,player.y, target.x,target.y, dmg, 640, '🔸', evolved?55:0);
+    sfx.shoot();
+  } else if(wp.id==='missile'){
+    var mc = evolved?3:1;
+    for(var i=0;i<mc;i++) spawnBullet(player.x,player.y,target.x,target.y,dmg,420,'🚀',65,true);
+    sfx.shoot();
+  } else if(wp.id==='lightning'){
+    var chain = evolved?6:def.chain, cur=target, hit=[], cx=player.x, cy=player.y;
+    for(var c=0;c<chain && cur;c++){
+      damageEnemy(cur,dmg); hit.push(cur);
+      spawnBolt(cx,cy,cur.x,cur.y);
+      cx=cur.x; cy=cur.y;
+      cur = enemies.filter(function(e){return hit.indexOf(e)<0;}).sort(function(a,b){return dist2(cx,cy,a.x,a.y)-dist2(cx,cy,b.x,b.y);})[0];
+      if(cur && dist2(cx,cy,cur.x,cur.y) > 260*260) break;
+    }
+    sfx.shoot();
+  } else if(wp.id==='ice'){
+    if(target){ damageEnemy(target,dmg); target.slow = 1.4; spawnBullet(player.x,player.y,target.x,target.y,0,500,'❄️',0);
+      if(evolved) enemies.forEach(function(e){ if(dist2(target.x,target.y,e.x,e.y)<160*160){ damageEnemy(e,dmg*0.6); e.slow=1.2; } });
+      sfx.shoot(); }
+  } else if(wp.id==='bomb'){
+    var bc = evolved?3:1;
+    for(var i=0;i<bc;i++){
+      var tx = target ? target.x+(Math.random()-0.5)*80 : player.x+(Math.random()-0.5)*200;
+      var ty = target ? target.y+(Math.random()-0.5)*80 : player.y+(Math.random()-0.5)*200;
+      W.drops.push({type:'bombFuse', x:tx, y:ty, t:def.delay, dmg:dmg, radius:def.radius});
+    }
+  } else if(wp.id==='blackhole'){
+    var tx = target? target.x: player.x, ty = target? target.y: player.y;
+    W.drops.push({type:'vortex', x:tx, y:ty, t: def.duration||3, dmg:dmg, radius: evolved?def.radius*1.5:def.radius});
+    sfx.vortex();
+  } else if(wp.id==='meteor'){
+    var mc2 = evolved?3:1;
+    for(var i=0;i<mc2;i++){
+      var tx2 = target? target.x+(Math.random()-0.5)*150 : player.x+(Math.random()-0.5)*300;
+      var ty2 = target? target.y+(Math.random()-0.5)*150 : player.y+(Math.random()-0.5)*300;
+      W.drops.push({type:'meteorFall', x:tx2, y:ty2, t:0.9, dmg:dmg, radius:def.radius});
+    }
+  } else if(wp.id==='laser'){
+    if(target){
+      damageEnemy(target,dmg);
+      spawnBolt(player.x,player.y,target.x,target.y,'#ff3b3b');
+      if(evolved) enemies.forEach(function(e){ if(e!==target && dist2(target.x,target.y,e.x,e.y)<130*130) damageEnemy(e,dmg*0.4); });
+      sfx.shoot();
+    }
+  } else if(wp.id==='mine'){
+    var mx = player.x - Math.cos(player.angle)*36, my = player.y - Math.sin(player.angle)*36;
+    W.drops.push({type:'mine', x:mx, y:my, t:4.5, armT:0.35, dmg:dmg, radius: evolved?def.radius*1.4:def.radius, triggerR:75});
+  } else if(wp.id==='drone'){
+    if(target){
+      var p0 = droneOrbitPos(0);
+      spawnBullet(p0.x,p0.y,target.x,target.y,dmg,520,'🔷',22,true,'#22d3ee');
+      if(evolved){ var p1 = droneOrbitPos(1); spawnBullet(p1.x,p1.y,target.x,target.y,dmg,520,'🔷',22,true,'#22d3ee'); }
+      sfx.shoot();
+    }
+  } else if(wp.fused){
+    if(wp.tier>=3){
+      var nukeFrac = wp.tier>=4 ? 0.7 : 0.4;
+      enemies.forEach(function(e){ damageEnemy(e, dmg*nukeFrac); });
+      spawnRing(player.x,player.y,wp.radius,wp.color);
+      spawnRing(player.x,player.y,wp.radius*0.6,wp.color);
+      spawnRing(player.x,player.y,wp.radius*1.3,wp.color);
+      if(wp.tier>=4){ spawnRing(player.x,player.y,wp.radius*1.7,wp.color); W.screenFlash = 0.35; }
+      for(var sb=0; sb<(wp.tier>=4?6:3); sb++) spawnBurst(player.x,player.y, wp.tier>=4?'#ffd35c':'#c084fc');
+      shake(wp.tier>=4?26:12+wp.tier*3, wp.tier>=4?0.5:0.3); sfx.explosion();
+      if(wp.tier>=4){ sfx.explosion(); toast('👑 '+wp.name+' 발동!'); }
+    } else if(wp.sigKey==='flame+lightning'){
+      if(target){
+        var pChain=[target], pcx=player.x, pcy=player.y;
+        for(var pc=0; pc<3 && pChain[pChain.length-1]; pc++){
+          var cur = pChain[pChain.length-1];
+          damageEnemy(cur, dmg*0.6);
+          cur.slow = 0.8;
+          spawnBolt(pcx,pcy,cur.x,cur.y,'#c084fc');
+          spawnRing(cur.x,cur.y,55,'#ff6b3d55');
+          pcx=cur.x; pcy=cur.y;
+          var next = enemies.filter(function(e){return pChain.indexOf(e)<0;}).sort(function(a,b){return dist2(pcx,pcy,a.x,a.y)-dist2(pcx,pcy,b.x,b.y);})[0];
+          if(next && dist2(pcx,pcy,next.x,next.y)<220*220) pChain.push(next); else break;
+        }
+        sfx.shoot();
+      }
+    } else if(wp.sigKey==='gun+missile'){
+      for(var gm=0; gm<3; gm++){
+        var ang = (gm-1)*0.28;
+        var tgx = target? target.x : player.x+Math.cos(player.angle+ang)*300;
+        var tgy = target? target.y : player.y+Math.sin(player.angle+ang)*300;
+        spawnBullet(player.x,player.y,tgx+Math.cos(ang)*40,tgy+Math.sin(ang)*40,dmg*0.5,500,'🎯',30,true,wp.color);
+      }
+      sfx.shoot();
+    } else if(wp.sigKey==='bomb+ice'){
+      var ftx = target? target.x: player.x+Math.cos(player.angle)*150, fty = target? target.y: player.y+Math.sin(player.angle)*150;
+      W.drops.push({type:'bombFuse', x:ftx, y:fty, t:0.55, dmg:dmg, radius:wp.radius, frost:true});
+      sfx.vortex();
+    } else if(wp.sigKey==='blackhole+meteor'){
+      var gtx = target? target.x: player.x, gty = target? target.y: player.y;
+      W.drops.push({type:'vortex', x:gtx, y:gty, t:3.2, dmg:dmg*0.4, radius:wp.radius});
+      W.drops.push({type:'meteorFall', x:gtx+(Math.random()-0.5)*80, y:gty+(Math.random()-0.5)*80, t:0.7, dmg:dmg*0.6, radius:wp.radius*0.6});
+      sfx.vortex();
+    } else if(wp.sigKey==='laser+saw'){
+      enemies.forEach(function(e){ if(dist2(player.x,player.y,e.x,e.y)<wp.radius*wp.radius) damageEnemy(e, dmg*dt*4); });
+      spawnRing(player.x,player.y,wp.radius,wp.color);
+      if(Math.random()<0.15) spawnBolt(player.x,player.y, player.x+Math.cos(W.t*6)*wp.radius, player.y+Math.sin(W.t*6)*wp.radius, '#ff3b3b');
+      wp.cd = 0.05;
+    } else if(wp.sigKey==='mine+poison'){
+      var mtx = player.x - Math.cos(player.angle)*40, mty = player.y - Math.sin(player.angle)*40;
+      W.drops.push({type:'mine', x:mtx, y:mty, t:5, armT:0.3, dmg:dmg, radius:wp.radius, triggerR:90, frost:false});
+      sfx.vortex();
+    } else {
+      genericFusionFire(wp, dmg, target, evolved);
+    }
+  }
+}
+function spawnBullet(x,y,tx,ty,dmg,spd,emoji,splash,homing,trailColor){
+  var a = Math.atan2(ty-y,tx-x);
+  bullets.push({x:x,y:y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,dmg:dmg,life:1.6,emoji:emoji,splash:splash||0,homing:homing,trailColor:trailColor});
+}
+function spawnBolt(x1,y1,x2,y2,color){ W.particles.push({type:'bolt',x1:x1,y1:y1,x2:x2,y2:y2,life:0.15,color:color||'#fef08a'}); }
+function spawnRing(x,y,r,color){ W.particles.push({type:'ring',x:x,y:y,r:r,life:0.3,color:color}); }
+
+function damageEnemy(e, dmg){
+  if(!e || e.dead) return;
+  var crit = Math.random() < 0.12;
+  if(crit){ dmg *= 2.2; spawnFloater(e.x, e.y-18, 'CRIT!', '#ffd35c'); spawnBurst(e.x,e.y,'#ffd35c'); }
+  e.hp -= dmg;
+  if(e.hp<=0 && !e.dead){ e.dead=true; killEnemy(e); }
+}
+function spawnFloater(x,y,text,color){ W.floaters.push({x:x,y:y,text:text,color:color||'#fff',life:0.7,vy:-42}); }
+function updateFloaters(dt){
+  W.floaters.forEach(function(f){ f.y += f.vy*dt; f.life -= dt; });
+  W.floaters = W.floaters.filter(function(f){return f.life>0;});
+}
+function killEnemy(e){
+  var db = (player.dog && player.dog.bonus) || {};
+  var idx = enemies.indexOf(e); if(idx>=0) enemies.splice(idx,1);
+  W.killCount++; profile.killsAll++;
+  unlockAchievement('first_kill');
+  W.combo++; W.comboTimer = 2.0 + (db.comboWindowAdd||0);
+  if(W.combo>=20) unlockAchievement('combo_master');
+  if((W.combo>=3 && W.combo%3===0) || COMBO_TITLES.some(function(t){return t.n===W.combo;})) showCombo();
+  var coinGain = Math.round((e.boss?40:1) * (1+Math.min(2,W.combo*0.06)) * (W.eventActive==='enemyRush'?2:1));
+  if(e.golden) coinGain *= 10;
+  spawnPickup('coin', e.x, e.y, coinGain);
+  if(e.golden){ spawnPickup('gem', e.x, e.y, 3); toast('✨ 황금 적 처치! 잭팟 보상!'); shake(10,0.2); unlockAchievement('golden_hunter'); }
+  else if(Math.random()<0.12+(db.gemChanceAdd||0)) spawnPickup('gem', e.x, e.y, 1);
+  spawnBurst(e.x, e.y, e.golden?'#ffd700':(e.boss?'#ffd35c':'#ff9f43'));
+  sfx.kill();
+  if(e.boss){ W.bossActive=null; document.getElementById('bossBar').style.display='none'; toast('👑 보스 처치! 큰 보상 획득'); shake(18,0.4); sfx.explosion(); unlockAchievement('boss_slayer'); }
+  gainXp(e.boss? 60 : 4);
+  updateHUDCounts();
+}
+function gainXp(amount){
+  var db = (player.dog && player.dog.bonus) || {};
+  player.xp += amount * (db.xpMul||1) * (W.eventActive==='doubleXp'?2:1);
+  while(player.xp >= player.xpNeeded){
+    player.xp -= player.xpNeeded;
+    player.level++;
+    player.xpNeeded = Math.round(player.xpNeeded*1.16 + 4);
+    if(db.reviveHeal) player.hp = Math.min(player.maxhp, player.hp + player.maxhp*db.reviveHeal);
+    queueLevelUp();
+  }
+  document.getElementById('lvCount').textContent = player.level;
+}
+var levelUpQueue = 0;
+function queueLevelUp(){
+  levelUpQueue++;
+  if(!W.paused) showLevelUpModal();
+}
+function shuffle(arr){
+  arr = arr.slice();
+  for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=arr[i]; arr[i]=arr[j]; arr[j]=t; }
+  return arr;
+}
+var PRIORITY_NEW = ['laser','poison','saw','mine'];
+function buildLevelUpOptions(){
+  var owned = player.weapons.map(function(w){return w.id;});
+  var notOwned = Object.keys(WDEF).filter(function(id){return owned.indexOf(id)<0;});
+  var upgradable = player.weapons.filter(function(w){return w.level<5;});
+  var canNew = player.weapons.length<8 && notOwned.length>0;
+  var canLevel = upgradable.length>0;
+  var hasWaitingEvolved = player.weapons.some(function(w){return w.evolved;});
+
+  function pickNewId(usedIds){
+    var pool = notOwned.filter(function(id){return usedIds.indexOf(id)<0;});
+    if(pool.length===0) return null;
+    var weighted = [];
+    pool.forEach(function(id){ var w = PRIORITY_NEW.indexOf(id)>=0 ? 3 : 1; for(var i=0;i<w;i++) weighted.push(id); });
+    return weighted[Math.floor(Math.random()*weighted.length)];
+  }
+  function pickLevelId(usedIds){
+    var pool = upgradable.filter(function(w){return usedIds.indexOf(w.id)<0;});
+    if(pool.length===0) return null;
+    return pool[Math.floor(Math.random()*pool.length)].id;
+  }
+
+  var picks=[], used=[];
+  for(var slot=0; slot<3; slot++){
+    var wantLevel = canLevel && (!canNew || Math.random()<0.5);
+    var type=null, id=null;
+    if(wantLevel){ id = pickLevelId(used); if(id) type='levelup'; }
+    if(!type && canNew){ id = pickNewId(used); if(id) type='new'; }
+    if(!type && canLevel){ id = pickLevelId(used); if(id) type='levelup'; }
+    if(type){ picks.push({type:type, id:id}); used.push(id); }
+    else { picks.push({type:'coin', amount:25}); }
+  }
+  if(hasWaitingEvolved){
+    var candidates = player.weapons.filter(function(w){return w.level<5;});
+    if(candidates.length>0){
+      var already = picks.some(function(p){return p.type==='levelup' && candidates.some(function(c){return c.id===p.id;});});
+      if(!already){
+        var pick = candidates[Math.floor(Math.random()*candidates.length)];
+        var replaceIdx = picks.length-1;
+        for(var k=0;k<picks.length;k++){ if(picks[k].type==='coin'){ replaceIdx=k; break; } }
+        picks[replaceIdx] = {type:'levelup', id:pick.id};
+      }
+    }
+  }
+  if(canNew){
+    var hasNewPick = picks.some(function(p){return p.type==='new';});
+    if(!hasNewPick){
+      var newPickId = pickNewId([]);
+      if(newPickId){
+        var replaceIdx2 = -1;
+        for(var k2=0;k2<picks.length;k2++){ if(picks[k2].type==='coin'){ replaceIdx2=k2; break; } }
+        if(replaceIdx2<0) replaceIdx2 = picks.length-1;
+        picks[replaceIdx2] = {type:'new', id:newPickId};
+      }
+    }
+  }
+  return picks;
+}
+function showLevelUpModal(){
+  W.paused = true;
+  sfx.levelup();
+  var picks = buildLevelUpOptions();
+  var box = document.getElementById('lvOptions'); box.innerHTML='';
+  picks.forEach(function(opt){
+    var label, sub, emoji, def;
+    if(opt.type==='new'){
+      def = WDEF[opt.id]; emoji = def.emoji; label = '신규: '+def.name; sub = '새 무기 슬롯에 장착';
+    } else if(opt.type==='levelup'){
+      var w = player.weapons.find(function(x){return x.id===opt.id;});
+      def = getDef(w);
+      emoji = w.evolved && def.evEmoji ? def.evEmoji : def.emoji;
+      label = def.name+' Lv.'+(w.level+1);
+      sub = (w.level+1>=5) ? '5레벨 진화! (합체 대기)' : '공격력 상승';
+    } else {
+      emoji='🪙'; label='코인 +'+opt.amount; sub='즉시 지급';
+    }
+    var div = document.createElement('div'); div.className='lvOpt';
+    div.innerHTML = '<div class="ic">'+emoji+'</div><div class="tx"><b>'+label+'</b><div>'+sub+'</div></div>';
+    div.onclick = function(){ applyLevelUpChoice(opt); closeLevelUpModal(); };
+    box.appendChild(div);
+  });
+  document.getElementById('levelUpModal').style.display='flex';
+}
+function closeLevelUpModal(){
+  document.getElementById('levelUpModal').style.display='none';
+  levelUpQueue = Math.max(0, levelUpQueue-1);
+  if(levelUpQueue>0) showLevelUpModal(); else W.paused=false;
+}
+function applyLevelUpChoice(opt){
+  if(opt.type==='new'){
+    player.weapons.push({id:opt.id, level:1, cd:0, evolved:false, tier:1});
+    toast('🎁 신규 무기 장착: '+WDEF[opt.id].name);
+    if(player.weapons.length>=8) unlockAchievement('weapon_collector');
+  } else if(opt.type==='levelup'){
+    var w = player.weapons.find(function(x){return x.id===opt.id;});
+    w.level++;
+    if(w.level>=5 && !w.evolved){
+      w.evolved=true; var d=getDef(w); toast('🧬 진화! '+d.name+' → '+(d.evName||d.name)); setTimeout(function(){ if(W.running) checkFusion(); }, 1400);
+    } else {
+      toast(getDef(w).name+' Lv.'+w.level);
+    }
+  } else {
+    W.coins += opt.amount; profile.totalCoins += opt.amount; toast('🪙 코인 +'+opt.amount);
+  }
+  updateWeaponUI();
+  updateHUDCounts();
+}
+var fusionSeq = 0;
+function genericFusionFire(wp, dmg, target, evolved){
+  var ids = wp.parents || [];
+  var d1 = WDEF[ids[0]] || {}, d2 = WDEF[ids[1]] || {};
+  var hasAura = d1.aura || d2.aura;
+  var hasDrop = (d1.delay || d1.duration || d1.triggerR!==undefined || ids[0]==='blackhole' || ids[0]==='bomb' || ids[0]==='meteor' || ids[0]==='mine') ||
+                (d2.delay || d2.duration || ids[1]==='blackhole' || ids[1]==='bomb' || ids[1]==='meteor' || ids[1]==='mine');
+  var hasHoming = d1.homing || d2.homing || ids.indexOf('drone')>=0;
+  if(hasAura){
+    enemies.forEach(function(e){ if(dist2(player.x,player.y,e.x,e.y)<wp.radius*wp.radius) damageEnemy(e, dmg*0.07); });
+    spawnRing(player.x,player.y,wp.radius,wp.color);
+  } else if(hasDrop){
+    var tx = target?target.x:player.x, ty = target?target.y:player.y;
+    W.drops.push({type:'vortex', x:tx, y:ty, t:2.6, dmg:dmg*0.35, radius:wp.radius});
+    sfx.vortex();
+  } else if(hasHoming){
+    for(var i=0;i<3;i++){
+      var a=(i-1)*0.32;
+      var tgx = target? target.x : player.x+Math.cos(player.angle+a)*300;
+      var tgy = target? target.y : player.y+Math.sin(player.angle+a)*300;
+      spawnBullet(player.x,player.y, tgx+Math.cos(a)*30, tgy+Math.sin(a)*30, dmg*0.45, 520, wp.emoji||'💠', wp.radius*0.4, true, wp.color);
+    }
+    sfx.shoot();
+  } else if(target){
+    spawnBullet(player.x,player.y,target.x,target.y,dmg,540,wp.emoji||'💠',wp.radius*0.55,false,wp.color);
+    enemies.forEach(function(e){ if(dist2(player.x,player.y,e.x,e.y)<70*70) damageEnemy(e,dmg*0.25); });
+    sfx.shoot();
+  } else {
+    spawnRing(player.x,player.y,wp.radius*0.6,wp.color);
+  }
+}
+function combineWeapons(w1, w2){
+  var d1 = getDef(w1), d2 = getDef(w2);
+  var tier = Math.max(w1.tier||1, w2.tier||1) + 1;
+  var sigKey = [w1.id,w2.id].sort().join('+');
+  var sig = SIGNATURE_PAIRS[sigKey];
+  var name, emoji;
+  if(tier===2 && sig){ name = sig.name; emoji = sig.emoji; }
+  else if(tier===2){ name = d1.name+'+'+d2.name; emoji = (d1.emoji||'')+(d2.emoji||''); }
+  else if(tier===3){ name = 'EX 스킬: '+(sig?sig.name:d1.name); emoji = '🔮'; }
+  else { name = '우주 붕괴'; emoji = '👑'; }
+  var rad = Math.max(d1.radius||150, d2.radius||150) * 1.3;
+  var rng = Math.max(d1.range||d1.radius||420, d2.range||d2.radius||420) * 1.14;
+  var dmg = ((d1.dmg||0)+(d2.dmg||0)) * 1.28;
+  var cd = Math.max(0.3, Math.min(d1.cd||1, d2.cd||1) * 0.9);
+  if(tier>=3) cd *= 1.6;
+  if(tier>=4) cd *= 1.6;
+  fusionSeq++;
+  return {id:'fx'+fusionSeq, fused:true, tier:tier, name:name, emoji:emoji, dmg:dmg, cd:0, baseCd:cd, radius:rad, range:rng, color:'#ffd35c66', level:5, evolved:true, sigKey: sig?sigKey:null, parents:[w1.id,w2.id]};
+}
+function checkFusion(){
+  var evolvedList = player.weapons.filter(function(w){return w.evolved;});
+  if(evolvedList.length<2) return;
+  var w1 = evolvedList[0], w2 = evolvedList[1];
+  var fused = combineWeapons(w1, w2);
+  player.weapons = player.weapons.filter(function(w){return w!==w1 && w!==w2;});
+  player.weapons.push(fused);
+  toast('💥 합체! '+fused.name+' 탄생!');
+  shake(10+fused.tier*3, 0.25); sfx.explosion();
+  unlockAchievement('fusion_success');
+  if(fused.tier>=4) unlockAchievement('cosmic_collapse');
+  updateWeaponUI();
+  checkFusion();
+}
+function updateWeaponUI(){
+  var row = document.getElementById('weaponRow'); row.innerHTML='';
+  player.weapons.forEach(function(w){
+    var def = getDef(w);
+    var emoji = w.evolved && def.evEmoji ? def.evEmoji : def.emoji;
+    var div = document.createElement('div'); div.className='wIcon';
+    div.innerHTML = emoji + '<div class="lv">'+w.level+'</div>';
+    row.appendChild(div);
+  });
+}
+function updateHUDCounts(){
+  document.getElementById('coinCount').textContent = W.coins;
+  document.getElementById('gemCount').textContent = W.gems;
+  document.getElementById('killCount').textContent = W.killCount;
+  document.getElementById('lvCount').textContent = player.level;
+}
+
+/* ---------------- enemy spawn & AI ---------------- */
+var WAVE_POOL = [
+  ['chaser'],['chaser','rammer'],['chaser','rammer','drone'],
+  ['chaser','rammer','drone','truck'],['chaser','rammer','drone','truck','ufo'],
+  ['chaser','rammer','drone','truck','ufo','defense'],
+  ['chaser','rammer','drone','truck','ufo','defense','speedster']
+];
+function waveGoal(w){ var arr=[10,20,50,100,200]; return w<=arr.length? arr[w-1] : 200+(w-arr.length)*100; }
+
+function spawnEnemy(forceType){
+  var pool = WAVE_POOL[Math.min(WAVE_POOL.length-1, W.wave-1)];
+  var type = forceType || pool[Math.floor(Math.random()*pool.length)];
+  var def = ENEMY_DEF[type];
+  var ang = Math.random()*Math.PI*2, dist = 620+Math.random()*160;
+  var mul = 1 + (W.wave-1)*0.13;
+  var golden = !forceType && Math.random()<0.035;
+  if(golden) toast('✨ 황금 적 등장! 빨리 잡으세요!');
+  enemies.push({
+    type:type, emoji:def.emoji, x:player.x+Math.cos(ang)*dist, y:player.y+Math.sin(ang)*dist,
+    hp: golden? def.hp*mul*0.35 : def.hp*mul, maxhp: golden? def.hp*mul*0.35 : def.hp*mul,
+    spd: golden? def.spd*1.5 : def.spd, dmg:def.dmg*Math.min(1.7,1+(W.wave-1)*0.065),
+    ranged:def.ranged, keep:def.keep, erratic:def.erratic, shield:def.shield, dash:def.dash, boss:def.boss,
+    golden:golden,
+    hitCd:0, shootCd:1+Math.random(), wobble:Math.random()*10, dashCd:1.5+Math.random(), slow:0
+  });
+}
+var BOSS_VARIANTS = [
+  {emoji:'🚔', name:'폭주 트레일러', atk:'dash'},
+  {emoji:'🚚', name:'중장갑 호송대', atk:'dash'},
+  {emoji:'🐫', name:'모래 웜', atk:'burrow'},
+  {emoji:'🧊', name:'빙하 거인', atk:'freeze'},
+  {emoji:'🌋', name:'용암 정령', atk:'meteor'},
+  {emoji:'🛸', name:'우주 모선', atk:'summon'},
+  {emoji:'👽', name:'외계 지도자', atk:'teleport'},
+  {emoji:'👑', name:'궁극의 지배자', atk:'shockwave'}
+];
+function spawnBoss(){
+  spawnEnemy('boss');
+  var e = enemies[enemies.length-1];
+  var variant = BOSS_VARIANTS[W.biomeIdx % BOSS_VARIANTS.length];
+  e.hp = e.maxhp = 1100 + W.wave*340;
+  e.emoji = variant.emoji;
+  e.bossName = variant.name;
+  e.atk = variant.atk;
+  e.shockCd = 3.5; e.dashCd2 = 2.5; e.burrowT = 0; e.burrowed = false; e.teleCd = 4;
+  W.bossActive = e;
+  document.getElementById('bossBar').style.display='block';
+  document.getElementById('bossName').textContent = variant.emoji+' '+variant.name;
+  toast('⚠️ '+variant.name+' 출현!');
+  sfx.boss();
+}
+
+function updateEnemies(dt){
+  var concurrentCap = Math.min(9+W.wave*3.5, 58);
+  W.spawnTimer -= dt;
+  if(W.spawnTimer<=0 && enemies.length<concurrentCap){
+    var burst = 1+Math.floor(W.wave/3.5);
+    for(var i=0;i<burst;i++) spawnEnemy();
+    W.spawnTimer = Math.max(0.28, 1.2 - W.wave*0.05);
+  }
+  enemies.forEach(function(e){
+    if(e.dead) return;
+    var dx=player.x-e.x, dy=player.y-e.y, d=Math.hypot(dx,dy)||1;
+    var spd = e.spd * (e.slow>0?0.45:1);
+    e.slow = Math.max(0,e.slow-dt);
+    var moveX=dx/d, moveY=dy/d;
+    if(e.golden){ moveX*=-1; moveY*=-1; }
+    if(e.erratic){ e.wobble += dt*4; moveX += Math.sin(e.wobble)*0.6; moveY += Math.cos(e.wobble*0.7)*0.6; }
+    if(e.ranged){
+      if(d < e.keep-30){ moveX*=-1; moveY*=-1; } else if(d < e.keep+30){ moveX*=0.2; moveY*=0.2; }
+      e.shootCd -= dt;
+      if(e.shootCd<=0){ e.shootCd = 1.4; spawnEnemyProjectile(e); }
+    }
+    if(e.dash){
+      e.dashCd -= dt;
+      if(d<220 && e.dashCd<=0){ e.dashBurst=0.35; e.dashCd=2.2; }
+      if(e.dashBurst>0){ e.dashBurst-=dt; spd*=3.2; }
+    }
+    if(e.boss){
+      if(e.atk==='shockwave'){
+        e.shockCd -= dt;
+        if(e.shockCd<=0){ e.shockCd=4; e.shockWarn=1; spawnRing(e.x,e.y,230,'#ff2d5555'); }
+        if(e.shockWarn>0){ e.shockWarn-=dt; if(e.shockWarn<=0 && d<230){ damagePlayer(24); sfx.explosion(); } }
+      } else if(e.atk==='dash'){
+        e.dashCd2 -= dt;
+        if(d<300 && e.dashCd2<=0){ e.dashCd2=3; e.dashBurst2=0.5; spawnRing(e.x,e.y,40,'#ff2d5555'); }
+        if(e.dashBurst2>0){ e.dashBurst2-=dt; spd*=3; }
+      } else if(e.atk==='burrow'){
+        e.burrowT -= dt;
+        if(e.burrowT<=0){
+          if(!e.burrowed){ e.burrowed=true; e.burrowT=1.8; spd=0; }
+          else { e.burrowed=false; e.burrowT=2.5; spawnRing(e.x,e.y,150,'#c2410c66'); if(d<150) damagePlayer(20); shake(8,0.2); sfx.explosion(); }
+        }
+        if(e.burrowed) spd=0;
+      } else if(e.atk==='freeze'){
+        e.shockCd -= dt;
+        if(e.shockCd<=0){ e.shockCd=4.5; if(d<400) damagePlayer(10); player.invuln=Math.max(player.invuln,0.1); spawnBolt(e.x,e.y,player.x,player.y,'#7dd3fc'); sfx.vortex(); }
+      } else if(e.atk==='meteor'){
+        e.shockCd -= dt;
+        if(e.shockCd<=0){ e.shockCd=3; W.drops.push({type:'meteorFall', x:player.x+(Math.random()-0.5)*200, y:player.y+(Math.random()-0.5)*200, t:0.8, dmg:22, radius:100}); }
+      } else if(e.atk==='summon'){
+        e.shockCd -= dt;
+        if(e.shockCd<=0){ e.shockCd=6; spawnEnemy('drone'); spawnEnemy('drone'); toast('👾 드론 소환!'); }
+      } else if(e.atk==='teleport'){
+        e.teleCd -= dt;
+        if(e.teleCd<=0){ e.teleCd=5; var ta=Math.random()*Math.PI*2; e.x=player.x+Math.cos(ta)*260; e.y=player.y+Math.sin(ta)*260; spawnRing(e.x,e.y,60,'#a78bfa66'); sfx.vortex(); }
+      }
+    }
+    if(e.shield){
+      enemies.forEach(function(o){ if(o!==e && !o.dead && dist2(o.x,o.y,e.x,e.y)<150*150) o.shielded=true; });
+    }
+    var nrm = Math.hypot(moveX,moveY)||1;
+    e.x += moveX/nrm*spd*dt; e.y += moveY/nrm*spd*dt;
+    e.hitCd -= dt;
+    if(d < 46 && e.hitCd<=0){ damagePlayer(e.dmg); e.hitCd=0.6; if(player.special==='ram') damageEnemy(e, 45); if(player.dog && player.dog.bonus.ramDmg) damageEnemy(e, player.dog.bonus.ramDmg); }
+  });
+  enemies = enemies.filter(function(e){return !e.dead;});
+  if(W.bossActive){
+    var b=W.bossActive;
+    document.getElementById('bossFill').style.width = Math.max(0,b.hp/b.maxhp*100)+'%';
+  }
+}
+function spawnEnemyProjectile(e){
+  var a = Math.atan2(player.y-e.y, player.x-e.x);
+  bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*300,vy:Math.sin(a)*300,dmg:e.dmg,life:2,emoji:'🔺',enemy:true});
+}
+function damagePlayer(dmg){
+  if(player.invuln>0) return;
+  if(player.special==='shield' && player.shieldReady){
+    player.shieldReady=false; player.shieldCd=8; player.invuln=0.5;
+    spawnRing(player.x,player.y,40,'#22d3ee88'); sfx.boost();
+    toast('🛡️ 에너지 실드로 피해 무효화!');
+    return;
+  }
+  if(player.special==='armor') dmg *= 0.7;
+  if(player.dog && player.dog.bonus.contactDmgMul) dmg *= player.dog.bonus.contactDmgMul;
+  player.hp -= dmg; player.invuln=0.55;
+  shake(7,0.15); sfx.hurt();
+  if(player.hp<=0){
+    if(player.special==='revive' && !player.revived){
+      player.revived=true; player.hp=player.maxhp*0.5; player.invuln=1.5;
+      shake(14,0.3); sfx.win();
+      toast('👑 불사조의 힘으로 부활!');
+      return;
+    }
+    player.hp=0; endGame(false);
+  }
+}
+
+/* ---------------- world drops (bomb/meteor/vortex) ---------------- */
+function updateDrops(dt){
+  W.drops.forEach(function(d){
+    d.t -= dt;
+    if(d.type==='vortex'){
+      enemies.forEach(function(e){ var dd=dist2(d.x,d.y,e.x,e.y); if(dd<d.radius*d.radius){ damageEnemy(e, d.dmg*dt*3); if(d.frost) e.slow=1.0; } });
+      if(Math.random()<0.3) spawnRing(d.x,d.y,d.radius*(0.6+Math.random()*0.4), d.frost?'#7dd3fc33':'#a855f733');
+    }
+    if(d.type==='mine'){
+      if(d.armT>0){ d.armT-=dt; }
+      else {
+        for(var i=0;i<enemies.length;i++){ if(dist2(d.x,d.y,enemies[i].x,enemies[i].y)<d.triggerR*d.triggerR){ d.t=0; break; } }
+      }
+    }
+    if(d.t<=0){
+      if(d.type==='bombFuse' || d.type==='meteorFall' || d.type==='mine'){
+        enemies.forEach(function(e){ if(dist2(d.x,d.y,e.x,e.y)<d.radius*d.radius){ damageEnemy(e,d.dmg); if(d.frost) e.slow=1.6; } });
+        spawnRing(d.x,d.y,d.radius, d.frost?'#7dd3fc66':'#ff9f4366');
+        shake(10,0.2); sfx.explosion();
+      }
+      d.dead=true;
+    }
+  });
+  W.drops = W.drops.filter(function(d){return !d.dead;});
+}
+
+/* ---------------- bullets ---------------- */
+function updateBullets(dt){
+  bullets.forEach(function(b){
+    if(b.homing){
+      var t = nearestEnemy(b.x,b.y,700);
+      if(t){ var a=Math.atan2(t.y-b.y,t.x-b.x), spd=Math.hypot(b.vx,b.vy); b.vx=Math.cos(a)*spd; b.vy=Math.sin(a)*spd; }
+    }
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    if(b.trailColor && Math.random()<0.6){ W.particles.push({type:'burst',x:b.x,y:b.y,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,life:0.22,color:b.trailColor}); }
+    if(b.enemy){
+      if(dist2(b.x,b.y,player.x,player.y)<30*30){ damagePlayer(b.dmg); b.life=0; }
+    } else {
+      for(var i=0;i<enemies.length;i++){
+        var e=enemies[i];
+        if(dist2(b.x,b.y,e.x,e.y)<32*32){
+          damageEnemy(e, e.shielded? b.dmg*0.5 : b.dmg);
+          if(b.splash){
+            enemies.forEach(function(o){ if(o!==e && dist2(o.x,o.y,e.x,e.y)<b.splash*b.splash) damageEnemy(o,b.dmg*0.5); });
+            spawnRing(e.x,e.y,b.splash,b.trailColor||'#ffffff55');
+            spawnBurst(e.x,e.y,b.trailColor||'#ffd35c');
+            if(b.splash>60){ shake(6,0.12); sfx.explosion(); }
+          }
+          b.life=0; break;
+        }
+      }
+    }
+  });
+  bullets = bullets.filter(function(b){return b.life>0;});
+  enemies.forEach(function(e){ e.shielded=false; });
+}
+
+/* ---------------- collectibles / particles ---------------- */
+function updateParticles(dt){
+  W.particles.forEach(function(p){
+    p.life-=dt;
+    if(p.type==='burst'){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.9; p.vy*=0.9; }
+  });
+  W.particles = W.particles.filter(function(p){return p.life>0;});
+}
+function updatePickups(dt){
+  var db = (player.dog && player.dog.bonus) || {};
+  var magnetBonus = (player.special==='magnet' ? 1.5 : 1) * (db.magnetMul||1);
+  W.pickups.forEach(function(p){
+    var dx=player.x-p.x, dy=player.y-p.y, d=Math.hypot(dx,dy)||1;
+    if(d<230*magnetBonus){ var pull=Math.max(180,520-d)*magnetBonus; p.x+=dx/d*pull*dt; p.y+=dy/d*pull*dt; }
+    if(d<30){
+      if(p.type==='coin'){ var val=Math.round(p.value*(db.coinMul||1)); W.coins+=val; profile.totalCoins+=val; profile.lifetimeCoins+=val; if(profile.lifetimeCoins>=1000) unlockAchievement('millionaire'); } else { W.gems+=p.value; }
+      sfx.coin(); p.dead=true; updateHUDCounts();
+    }
+  });
+  W.pickups = W.pickups.filter(function(p){return !p.dead;});
+}
+
+/* ---------------- main update ---------------- */
+function update(dt){
+  W.t += dt;
+  W.waveTimer += dt;
+  if(W.waveTimer>60){ W.waveTimer=0; W.wave++; toast('🌊 WAVE '+W.wave+' 시작! 목표 '+waveGoal(W.wave)+'대 처치'); if(W.wave%3===0 && !W.bossActive) spawnBoss(); }
+  W.biomeTimer += dt;
+  if(W.biomeTimer>75){ W.biomeTimer=0; W.biomeIdx=(W.biomeIdx+1)%BIOMES.length; toast('🗺️ '+BIOMES[W.biomeIdx].name+' 지역 진입!'); }
+  W.comboTimer -= dt; if(W.comboTimer<=0) W.combo=0;
+
+  if(!W.eventActive){
+    W.eventTimer += dt;
+    if(W.eventTimer > 75){ W.eventTimer = 0; triggerRandomEvent(); }
+  } else {
+    W.eventT -= dt;
+    if(W.eventActive==='coinRain'){
+      W.coinRainSpawnT -= dt;
+      if(W.coinRainSpawnT<=0){
+        W.coinRainSpawnT = 0.12;
+        var rx = player.x + (Math.random()-0.5)*520, ry = player.y + (Math.random()-0.5)*520;
+        spawnPickup('coin', rx, ry, 5+Math.floor(Math.random()*10));
+      }
+    } else if(W.eventActive==='slowmo'){
+      enemies.forEach(function(e){ e.slow = Math.max(e.slow, 1); });
+    }
+    if(W.eventT<=0){ W.eventActive=null; toast('이벤트 종료!'); }
+  }
+
+  var mag = Math.hypot(joy.x,joy.y);
+  var boosted = player.boosting>0;
+  if(player.boostCd>0) player.boostCd -= dt;
+  if(player.boosting>0) player.boosting -= dt;
+  boostBtn.style.opacity = player.boostCd>0 ? 0.45 : 1;
+  dogThrowBtn.style.opacity = (player.dogThrowCd>0 || player.dogThrown) ? 0.45 : 1;
+
+  if(mag>0.08){
+    var targetAngle = Math.atan2(joy.y,joy.x);
+    var da = targetAngle - player.angle;
+    while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
+    player.angle += da * Math.min(1, player.turn*dt);
+    if(Math.abs(da) > 1.4 && player.speed > player.maxSpeed*0.5){
+      W.particles.push({type:'drift', x:player.x-Math.cos(player.angle)*18, y:player.y-Math.sin(player.angle)*18, life:0.4});
+    }
+    var target = Math.min(1,mag) * player.maxSpeed * (boosted?1.7:1) * (W.eventActive==='frenzy'?1.25:1);
+    player.speed += (target-player.speed) * Math.min(1,4*dt);
+  } else {
+    player.speed += (0-player.speed) * Math.min(1,5*dt);
+  }
+  player.x += Math.cos(player.angle)*player.speed*dt;
+  player.y += Math.sin(player.angle)*player.speed*dt;
+  if(player.dogThrowCd>0) player.dogThrowCd -= dt;
+  if(player.dogThrown){
+    player.dogThrowT += dt;
+    var throwDur = 0.32;
+    if(player.dogThrowPhase==='out'){
+      var tp = Math.min(1, player.dogThrowT/throwDur);
+      player.dogX = player.dogThrowSX + (player.dogThrowTX-player.dogThrowSX)*tp;
+      player.dogY = player.dogThrowSY + (player.dogThrowTY-player.dogThrowSY)*tp;
+      if(tp>=1){
+        var throwDmg = 45 + player.level*4.5;
+        enemies.forEach(function(e){ if(dist2(player.dogThrowTX,player.dogThrowTY,e.x,e.y)<115*115) damageEnemy(e, throwDmg); });
+        spawnRing(player.dogThrowTX, player.dogThrowTY, 115, '#c4b5fd88');
+        spawnBurst(player.dogThrowTX, player.dogThrowTY, '#c4b5fd');
+        shake(9,0.18); sfx.explosion();
+        player.dogThrowPhase='return'; player.dogThrowT=0;
+      }
+    } else {
+      var rp = Math.min(1, player.dogThrowT/throwDur);
+      var backX = player.x - Math.cos(player.angle)*38, backY = player.y - Math.sin(player.angle)*38;
+      player.dogX = player.dogThrowTX + (backX-player.dogThrowTX)*rp;
+      player.dogY = player.dogThrowTY + (backY-player.dogThrowTY)*rp;
+      if(rp>=1) player.dogThrown=false;
+    }
+  } else {
+    var dogTargetX = player.x - Math.cos(player.angle)*38;
+    var dogTargetY = player.y - Math.sin(player.angle)*38;
+    player.dogX += (dogTargetX - player.dogX) * Math.min(1, 5*dt);
+    player.dogY += (dogTargetY - player.dogY) * Math.min(1, 5*dt);
+  }
+  player.invuln -= dt;
+  if(player.invuln<=-2 && player.hp<player.maxhp){ var regenMul=(player.dog&&player.dog.bonus.regenMul)||1; player.hp = Math.min(player.maxhp, player.hp + player.maxhp*0.02*regenMul*dt); }
+
+  if(player.special==='shield' && !player.shieldReady){
+    player.shieldCd -= dt;
+    if(player.shieldCd<=0){ player.shieldReady=true; spawnRing(player.x,player.y,34,'#22d3ee55'); }
+  }
+  if(player.special==='siren'){
+    player.sirenCd -= dt;
+    if(player.sirenCd<=0){
+      player.sirenCd = 5;
+      enemies.forEach(function(e){ if(dist2(player.x,player.y,e.x,e.y)<260*260) e.slow=1.6; });
+      spawnRing(player.x,player.y,260,'#60a5fa55');
+      sfx.vortex();
+    }
+  }
+
+  player.weapons.forEach(function(w){ fireWeapon(w, dt); });
+  if(player.dog && !player.dogThrown){
+    player.dogAtkCd -= dt;
+    if(player.dogAtkCd<=0){
+      var dogTarget = nearestEnemy(player.dogX, player.dogY, 240);
+      if(dogTarget){
+        player.dogAtkCd = 1.3;
+        var dogDmg = 9 + player.level*1.6;
+        spawnBullet(player.dogX, player.dogY, dogTarget.x, dogTarget.y, dogDmg, 460, '🦴', 18);
+        sfx.shoot();
+      }
+    }
+  }
+  updateEnemies(dt);
+  updateBullets(dt);
+  updateDrops(dt);
+  updateParticles(dt);
+  updatePickups(dt);
+  updateFloaters(dt);
+  if(W.shakeT>0){ W.shakeT-=dt; if(W.shakeT<=0) W.shakeMag=0; }
+  if(W.screenFlash>0) W.screenFlash -= dt*1.4;
+
+  document.getElementById('hpBar').style.width = Math.max(0,player.hp/player.maxhp*100)+'%';
+  document.getElementById('timerBox').textContent = fmtTime(W.t);
+  document.getElementById('waveBox').textContent = 'WAVE '+W.wave;
+  updateHUDCounts();
+
+  if(W.t >= 300) unlockAchievement('survivor');
+  if(W.t >= 600 && !W._won){ W._won=true; endGame(true); }
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  var cw=canvas.width, ch=canvas.height;
+  var biome = BIOMES[W.biomeIdx];
+  ctx.fillStyle = biome.bg; ctx.fillRect(0,0,cw,ch);
+
+  var camX = player.x - cw/2, camY = player.y - ch/2;
+  if(W.shakeT>0){ camX += (Math.random()-0.5)*W.shakeMag; camY += (Math.random()-0.5)*W.shakeMag; }
+  ctx.save(); ctx.translate(-camX,-camY);
+
+  ctx.strokeStyle = '#ffffff0f'; ctx.lineWidth=2;
+  var grid=120, startX=Math.floor(camX/grid)*grid, startY=Math.floor(camY/grid)*grid;
+  for(var gx=startX; gx<camX+cw+grid; gx+=grid){ ctx.beginPath(); ctx.moveTo(gx,camY); ctx.lineTo(gx,camY+ch); ctx.stroke(); }
+  for(var gy=startY; gy<camY+ch+grid; gy+=grid){ ctx.beginPath(); ctx.moveTo(camX,gy); ctx.lineTo(camX+cw,gy); ctx.stroke(); }
+
+  W.particles.forEach(function(p){
+    if(p.type==='drift'){ ctx.globalAlpha=p.life*2; ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,7); ctx.fill(); ctx.globalAlpha=1; }
+    if(p.type==='ring'){ ctx.globalAlpha=p.life*3; ctx.strokeStyle=p.color; ctx.lineWidth=6; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.stroke(); ctx.globalAlpha=1; }
+    if(p.type==='bolt'){ ctx.globalAlpha=p.life*6; ctx.strokeStyle=p.color||'#fef08a'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(p.x1,p.y1); ctx.lineTo(p.x2,p.y2); ctx.stroke(); ctx.globalAlpha=1; }
+    if(p.type==='burst'){ ctx.globalAlpha=Math.max(0,p.life*2.2); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,3.5,0,7); ctx.fill(); ctx.globalAlpha=1; }
+  });
+  W.pickups.forEach(function(p){ ctx.font='18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.type==='coin'?'🪙':'💎', p.x, p.y); });
+  W.floaters.forEach(function(f){ ctx.globalAlpha=Math.max(0,f.life*1.5); ctx.font='bold 14px sans-serif'; ctx.fillStyle=f.color; ctx.textAlign='center'; ctx.fillText(f.text, f.x, f.y); ctx.globalAlpha=1; });
+  W.drops.forEach(function(d){
+    if(d.type==='vortex'){ ctx.font='40px sans-serif'; ctx.textAlign='center'; ctx.fillText('🌀',d.x,d.y+14); }
+    if(d.type==='bombFuse'){ ctx.font='26px sans-serif'; ctx.textAlign='center'; ctx.fillText('💣',d.x,d.y+8); }
+    if(d.type==='meteorFall'){ ctx.font='30px sans-serif'; ctx.textAlign='center'; ctx.fillText('☄️',d.x,d.y-40*d.t+8); }
+    if(d.type==='mine'){ ctx.globalAlpha = d.armT>0 ? 0.5 : (0.6+0.4*Math.sin(W.t*14)); ctx.font='22px sans-serif'; ctx.textAlign='center'; ctx.fillText('🧨',d.x,d.y+7); ctx.globalAlpha=1; }
+  });
+
+  enemies.forEach(function(e){
+    if(e.golden){
+      var gg = ctx.createRadialGradient(e.x,e.y,2,e.x,e.y,26);
+      gg.addColorStop(0,'#ffd700aa'); gg.addColorStop(1,'#ffd70000');
+      ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(e.x,e.y,26,0,7); ctx.fill();
+    }
+    ctx.font=(e.boss?54:28)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(e.emoji, e.x, e.y);
+    var w2 = e.boss?60:26;
+    ctx.fillStyle='#00000088'; ctx.fillRect(e.x-w2/2, e.y-(e.boss?46:22), w2, 4);
+    ctx.fillStyle=e.golden?'#ffd700':'#ff5252'; ctx.fillRect(e.x-w2/2, e.y-(e.boss?46:22), w2*Math.max(0,e.hp/e.maxhp), 4);
+  });
+
+  bullets.forEach(function(b){ ctx.font=(b.trailColor?26:18)+'px sans-serif'; ctx.textAlign='center'; ctx.fillText(b.emoji,b.x,b.y); });
+
+  if(player.dog){
+    var bob = Math.sin(W.t*7)*2.5;
+    ctx.font='22px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(player.dog.emoji, player.dogX, player.dogY+bob);
+  }
+  var droneWeapon = player.weapons.find(function(w){return w.id==='drone';});
+  if(droneWeapon){
+    var dcount = droneWeapon.evolved ? 2 : 1;
+    for(var di=0; di<dcount; di++){
+      var dp = droneOrbitPos(di);
+      ctx.font='20px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('🛰️', dp.x, dp.y);
+    }
+  }
+
+  ctx.save(); ctx.translate(player.x,player.y);
+  var glowR = 26;
+  var grad = ctx.createRadialGradient(0,0,4,0,0,glowR);
+  grad.addColorStop(0, (player.color||'#ffd35c')+'aa');
+  grad.addColorStop(1, (player.color||'#ffd35c')+'00');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(0,0,glowR,0,7); ctx.fill();
+  ctx.rotate(player.angle+Math.PI/2);
+  if(player.invuln>0 && Math.floor(W.t*20)%2===0) ctx.globalAlpha=0.4;
+  ctx.font='38px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(player.emoji,0,0);
+  ctx.globalAlpha=1; ctx.restore();
+
+  ctx.restore();
+
+  var nightAlpha = 0.45*(0.5+0.5*Math.sin(W.t*0.05));
+  if(biome.particle==='star' || nightAlpha>0.3){ ctx.fillStyle='rgba(0,10,30,'+Math.max(0,nightAlpha-0.15)+')'; ctx.fillRect(0,0,cw,ch); }
+
+  var hpRatio = player.hp/player.maxhp;
+  if(hpRatio < 0.3){
+    var pulse = (0.25+0.25*Math.sin(W.t*10)) * (1 - hpRatio/0.3);
+    var grad = ctx.createRadialGradient(cw/2,ch/2,ch*0.3,cw/2,ch/2,ch*0.75);
+    grad.addColorStop(0,'rgba(255,0,0,0)'); grad.addColorStop(1,'rgba(200,0,0,'+pulse+')');
+    ctx.fillStyle=grad; ctx.fillRect(0,0,cw,ch);
+  }
+
+  if(W.screenFlash>0){ ctx.fillStyle='rgba(255,235,150,'+Math.min(0.6,W.screenFlash)+')'; ctx.fillRect(0,0,cw,ch); }
+
+  renderMinimap(camX,camY);
+}
+function renderMinimap(){
+  mctx.clearRect(0,0,88,88);
+  mctx.save(); mctx.beginPath(); mctx.arc(44,44,42,0,7); mctx.clip();
+  mctx.fillStyle='#0a0e17aa'; mctx.fillRect(0,0,88,88);
+  var scale = 42/700;
+  enemies.forEach(function(e){
+    var dx=(e.x-player.x)*scale, dy=(e.y-player.y)*scale;
+    var d=Math.hypot(dx,dy); if(d>40){ dx=dx/d*40; dy=dy/d*40; }
+    mctx.fillStyle = e.boss?'#ffd35c':'#ff5252';
+    mctx.beginPath(); mctx.arc(44+dx,44+dy,e.boss?4:2,0,7); mctx.fill();
+  });
+  mctx.fillStyle='#4ade80'; mctx.beginPath(); mctx.arc(44,44,3.5,0,7); mctx.fill();
+  mctx.restore();
+}
+
+/* ---------------- end game ---------------- */
+function getRank(won, t, kills){
+  if(won){
+    if(kills>=250) return {title:'👑 S랭크: 전설의 카레이서', sub:'무한도로를 완전히 지배했습니다!'};
+    if(kills>=150) return {title:'🥇 A랭크: 베테랑 카레이서', sub:'놀라운 실력으로 완주했습니다!'};
+    return {title:'🥈 B랭크: 생존자', sub:'무사히 10분을 버텨냈습니다!'};
+  }
+  var pct = t/600;
+  if(pct>=0.8) return {title:'🔥 거의 다 왔어요!', sub:'조금만 더 하면 완주할 수 있어요'};
+  if(pct>=0.5) return {title:'🥉 베테랑 드라이버', sub:'절반 넘게 버텼어요, 대단해요!'};
+  if(pct>=0.2) return {title:'🚗 숙련된 드라이버', sub:'감을 잡아가고 있어요'};
+  return {title:'🔰 새내기 드라이버', sub:'다음엔 더 오래 버틸 수 있을 거예요'};
+}
+function spawnConfetti(){
+  var layer = document.getElementById('confettiLayer'); layer.innerHTML='';
+  var colors = ['#ffd35c','#ff6b3d','#4ade80','#60a5fa','#c084fc','#f472b6'];
+  for(var i=0;i<50;i++){
+    var el = document.createElement('div');
+    el.className='confetti';
+    el.style.left = (Math.random()*100)+'%';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (2.2+Math.random()*1.8)+'s';
+    el.style.animationDelay = (Math.random()*0.6)+'s';
+    el.style.transform = 'rotate('+Math.floor(Math.random()*360)+'deg)';
+    layer.appendChild(el);
+  }
+}
+function endGame(won){
+  W.running=false;
+  if(won) sfx.win(); else sfx.lose();
+  if(won) unlockAchievement('finisher');
+  if(W.t>profile.bestTime){ profile.bestTime=W.t; }
+  saveProfile();
+  document.getElementById('hud').style.display='none';
+  document.getElementById('minimap').style.display='none';
+  document.getElementById('bossBar').style.display='none';
+  document.getElementById('joyBase').style.display='none';
+  document.getElementById('boostBtn').style.display='none';
+  document.getElementById('dogThrowBtn').style.display='none';
+  var scr = document.getElementById('endScreen');
+  var rank = getRank(won, W.t, W.killCount);
+  document.getElementById('endRank').textContent = won ? '🎉 축하합니다!' : '';
+  document.getElementById('endTitle').textContent = won? '🏆 무한도로 완주!' : '💥 격파당했습니다';
+  document.getElementById('endSub').textContent = rank.title+' — '+rank.sub;
+  document.getElementById('endStats').innerHTML =
+    '<div><span>생존 시간</span><b>'+fmtTime(W.t)+'</b></div>'+
+    '<div><span>도달 웨이브</span><b>'+W.wave+'</b></div>'+
+    '<div><span>처치 수</span><b>'+W.killCount+'</b></div>'+
+    '<div><span>획득 코인</span><b>'+W.coins+'</b></div>'+
+    '<div><span>보유 무기</span><b>'+player.weapons.length+'개</b></div>';
+  document.getElementById('confettiLayer').innerHTML='';
+  if(won){ spawnConfetti(); shake(10,0.4); }
+  scr.style.display='flex';
+}
+
+/* ---------------- loop ---------------- */
+var lastT=0;
+function loop(ts){
+  if(!W.running) return;
+  var dt = Math.min(0.05,(ts-lastT)/1000||0.016); lastT=ts;
+  if(W.paused){ requestAnimationFrame(loop); return; }
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+
+loadProfile();
+})();
+</script>
+</body>
+</html>
