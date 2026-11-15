@@ -88,6 +88,7 @@
     .airport .card-glow { background: #38bdf8; }
     .snake .card-glow { background: #4ade80; }
     .fishing .card-glow { background: #5eead4; }
+    .claw .card-glow { background: #f472b6; }
     .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .game-icon { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; font-size: 29px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); }
     .tag { padding: 6px 9px; border-radius: 999px; color: #c5d7ff; background: rgba(112,165,255,.13); font-size: 10px; font-weight: 800; }
@@ -139,7 +140,7 @@
         <a class="primary" href="#games">게임 둘러보기&nbsp; ↓</a>
       </div>
       <div class="stats" aria-label="게임 통계">
-        <div class="stat"><strong>10</strong><span>등록된 게임</span></div>
+        <div class="stat"><strong>11</strong><span>등록된 게임</span></div>
         <div class="stat"><strong>01</strong><span>게임 허브</span></div>
         <div class="stat"><strong>∞</strong><span>새로운 가능성</span></div>
       </div>
@@ -149,7 +150,7 @@
   <main class="wrap" id="games">
     <div class="section-top">
       <div><div class="section-kicker">GAME LIBRARY</div><h2>게임 라이브러리</h2></div>
-      <div class="section-note">현재 등록된 게임 10개</div>
+      <div class="section-note">현재 등록된 게임 11개</div>
     </div>
     <div class="toolbar">
       <input class="search" id="gameSearch" type="search" placeholder="게임 이름 검색..." aria-label="게임 이름 검색">
@@ -242,6 +243,14 @@
         <h3>조용한 낚시터</h3>
         <p>찌를 던지고 챔질 타이밍을 맞춰 물고기를 잡는 힐링 낚시 게임. 도감을 채우고 자동 낚시를 키워 보세요.</p>
         <div class="card-bottom"><span class="launch">낚시 시작 <span>→</span></span><span class="section-note">10</span></div>
+      </a>
+
+      <a class="game-card claw" href="./claw-machine/" data-category="arcade" data-name="인형뽑기 크레인 인형 도감 가게 아케이드 클로">
+        <span class="card-glow"></span>
+        <div class="card-head"><span class="game-icon">🧸</span><span class="tag">ARCADE</span></div>
+        <h3>인형뽑기</h3>
+        <p>크레인을 조종해 인형을 잡아보세요. 인형 20종을 모으는 도감과 5개의 가게가 기다리고 있어요.</p>
+        <div class="card-bottom"><span class="launch">게임 시작 <span>→</span></span><span class="section-note">11</span></div>
       </a>
     </div>
     <div class="empty" id="emptyState">검색 결과가 없어요. 다른 이름이나 카테고리를 선택해 보세요.</div>
