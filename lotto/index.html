@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로또 게임</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b1f2a;color:#f2f2f2;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:20px}
+h1{margin:8px 0 16px;font-size:24px}
+.tabs{display:flex;gap:8px;margin-bottom:20px}
+.tabs button,.btn{background:#2f3650;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-size:15px;cursor:pointer}
+.tabs button.active{background:#f5b700;color:#222;font-weight:700}
+.btn:disabled{opacity:.5;cursor:default}
+.panel{display:none;width:100%;max-width:520px;text-align:center}
+.panel.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:14px}
+.num{aspect-ratio:1;border-radius:50%;border:0;background:#3a4262;color:#fff;font-size:14px;cursor:pointer}
+.num.sel{background:#f5b700;color:#222;font-weight:700}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+.balls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;min-height:64px;margin:16px 0}
+.ball{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;animation:pop .4s ease}
+.ball.bonus{outline:3px dashed #fff;outline-offset:2px}
+@keyframes pop{from{transform:scale(0) rotate(-180deg)}to{transform:scale(1) rotate(0)}}
+.c1{background:#f0a500}.c2{background:#3b82f6}.c3{background:#ef4444}.c4{background:#6b7280}.c5{background:#22c55e}
+.result{font-size:18px;margin-top:12px;min-height:28px;font-weight:700}
+.info{color:#b9bfd6;font-size:14px}
+.scratch-wrap{position:relative;width:300px;height:140px;margin:16px auto;border-radius:12px;overflow:hidden;background:#fff;color:#222;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:pointer}
+.msg{min-height:28px;font-size:18px;font-weight:700;margin:10px 0}
+</style>
+</head>
+<body>
+<h1>🎱 로또 게임</h1>
+<div class="tabs">
+  <button data-tab="pick" class="active">번호 추첨</button>
+  <button data-tab="scratchPanel">복권 긁기</button>
+</div>
+
+<div id="pick" class="panel active">
+  <p class="info" id="pickInfo"></p>
+  <div class="grid" id="grid"></div>
+  <div class="row">
+    <button class="btn" id="autoBtn">자동 선택</button>
+    <button class="btn" id="resetBtn">초기화</button>
+    <button class="btn" id="drawBtn" disabled>추첨하기</button>
+  </div>
+  <div class="balls" id="balls"></div>
+  <div class="result" id="result"></div>
+</div>
+
+<div id="scratchPanel" class="panel">
+  <p class="info">손가락이나 마우스로 긁어서 당첨 여부를 확인하세요</p>
+  <div class="scratch-wrap">
+    <canvas id="scratchCanvas" width="600" height="280"></canvas>
+  </div>
+  <div class="msg" id="scratchMsg"></div>
+  <button class="btn" id="newTicket">새 복권</button>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function shuffle(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* 탭 전환 */
+document.querySelectorAll('.tabs button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === b.dataset.tab));
+  };
+});
+
+/* 번호 추첨 */
+const picks = new Set();
+let drawing = false;
+const grid = $('#grid');
+for(let n = 1; n <= 45; n++){
+  const b = document.createElement('button');
+  b.className = 'num';
+  b.textContent = n;
+  b.onclick = () => togglePick(n, b);
+  grid.appendChild(b);
+}
+function refreshGrid(){
+  grid.querySelectorAll('.num').forEach(b => b.classList.toggle('sel', picks.has(+b.textContent)));
+}
+function updateInfo(){
+  const list = [...picks].sort((a, b) => a - b).join(', ');
+  $('#pickInfo').textContent = `선택한 번호 ${picks.size}/6  ${list}`;
+  $('#drawBtn').disabled = picks.size !== 6 || drawing;
+}
+function togglePick(n){
+  if(drawing) return;
+  if(picks.has(n)) picks.delete(n);
+  else if(picks.size < 6) picks.add(n);
+  refreshGrid();
+  updateInfo();
+}
+$('#autoBtn').onclick = () => {
+  if(drawing) return;
+  picks.clear();
+  shuffle(Array.from({length: 45}, (_, i) => i + 1)).slice(0, 6).forEach(n => picks.add(n));
+  refreshGrid();
+  updateInfo();
+};
+$('#resetBtn').onclick = () => {
+  if(drawing) return;
+  picks.clear();
+  $('#balls').innerHTML = '';
+  $('#result').textContent = '';
+  refreshGrid();
+  updateInfo();
+};
+
+function makeBall(n, bonus){
+  const d = document.createElement('div');
+  d.className = `ball c${Math.ceil(n / 10)}` + (bonus ? ' bonus' : '');
+  d.textContent = n;
+  return d;
+}
+function rankText(matched, bonusHit){
+  if(matched === 6) return '🎉 1등! 6개 번호 일치';
+  if(matched === 5 && bonusHit) return '2등! 5개 일치 + 보너스';
+  if(matched === 5) return '3등! 5개 일치';
+  if(matched === 4) return '4등! 4개 일치';
+  if(matched === 3) return '5등! 3개 일치';
+  return `꽝… 일치 ${matched}개`;
+}
+async function draw(){
+  if(picks.size !== 6 || drawing) return;
+  drawing = true;
+  updateInfo();
+  const balls = $('#balls');
+  balls.innerHTML = '';
+  $('#result').textContent = '추첨 중...';
+
+  const pool = shuffle(Array.from({length: 45}, (_, i) => i + 1));
+  const win = pool.slice(0, 6);
+  const bonus = pool[6];
+
+  for(const n of win){
+    await sleep(500);
+    balls.appendChild(makeBall(n, false));
+  }
+  await sleep(700);
+  balls.appendChild(makeBall(bonus, true));
+
+  const matched = win.filter(n => picks.has(n)).length;
+  const bonusHit = picks.has(bonus);
+  $('#result').textContent = rankText(matched, bonusHit);
+  drawing = false;
+  updateInfo();
+}
+$('#drawBtn').onclick = draw;
+
+/* 복권 긁기 */
+const cv = $('#scratchCanvas');
+const ctx = cv.getContext('2d');
+const PRIZES = [
+  {t: '꽝', p: 70},
+  {t: '1,000원', p: 20},
+  {t: '5,000원', p: 8},
+  {t: '50,000원', p: 2}
+];
+let prizeText = PRIZES[0].t;
+let scratching = false;
+let scratchDone = false;
+
+function resetScratch(){
+  const total = PRIZES.reduce((s, x) => s + x.p, 0);
+  let r = Math.random() * total;
+  prizeText = PRIZES[PRIZES.length - 1].t;
+  for(const x of PRIZES){
+    if((r -= x.p) < 0){ prizeText = x.t; break; }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#b8bcc6';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = '#6b6f7a';
+  ctx.font = 'bold 40px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('여기를 긁으세요', cv.width / 2, cv.height / 2);
+  cv.style.display = 'block';
+  scratchDone = false;
+  $('#scratchMsg').textContent = '';
+}
+function pos(e){
+  const r = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * cv.width / r.width,
+    y: (e.clientY - r.top) * cv.height / r.height
+  };
+}
+function scratchAt(e){
+  if(scratchDone) return;
+  const p = pos(e);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 26, 0, Math.PI * 2);
+  ctx.fill();
+}
+function checkScratch(){
+  const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  let clear = 0, total = 0;
+  for(let i = 3; i < d.length; i += 16){
+    total++;
+    if(d[i] === 0) clear++;
+  }
+  if(clear / total > 0.5){
+    scratchDone = true;
+    cv.style.display = 'none';
+    $('#scratchMsg').textContent = prizeText === '꽝'
+      ? '아쉽지만 꽝입니다'
+      : `🎉 ${prizeText} 당첨!`;
+  }
+}
+cv.addEventListener('pointerdown', e => {
+  scratching = true;
+  cv.setPointerCapture(e.pointerId);
+  scratchAt(e);
+});
+cv.addEventListener('pointermove', e => { if(scratching) scratchAt(e); });
+cv.addEventListener('pointerup', () => { scratching = false; checkScratch(); });
+cv.addEventListener('pointercancel', () => { scratching = false; checkScratch(); });
+$('#newTicket').onclick = resetScratch;
+
+/* 초기화 */
+updateInfo();
+resetScratch();
+</script>
+</body>
+</html>
