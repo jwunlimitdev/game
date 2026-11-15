@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>조용한 낚시터</title>
+<style>
+  :root{color-scheme:dark;--bg:#0b1020;--panel:#131b30;--line:rgba(180,198,235,.14);--text:#f4f7ff;--muted:#a5b0c8;--accent:#5eead4}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:Pretendard,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;align-items:center;padding:env(safe-area-inset-top,0) 14px env(safe-area-inset-bottom,0)}
+  header{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;padding:16px 0}
+  header a{color:var(--muted);text-decoration:none;font-size:13px}
+  h1{font-size:18px;margin:0}
+  canvas{width:100%;max-width:420px;border-radius:18px;border:1px solid var(--line);cursor:pointer;touch-action:manipulation}
+  .hud{width:100%;max-width:420px;display:flex;justify-content:space-between;margin:12px 0;font-size:13px;color:var(--muted)}
+  .hud b{color:var(--text)}
+  #msg{min-height:44px;width:100%;max-width:420px;text-align:center;font-size:15px;font-weight:700;line-height:1.5}
+  .btns{display:flex;gap:10px;width:100%;max-width:420px;margin-top:8px}
+  button{flex:1;min-height:48px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);font:inherit;font-weight:800;cursor:pointer}
+  button.primary{background:linear-gradient(110deg,#91bdff,#71e3ed);color:#081226;border:0}
+  button:disabled{opacity:.4;cursor:default}
+  .dex{width:100%;max-width:420px;margin:18px 0 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:13px}
+  .dex-title{display:flex;justify-content:space-between;color:var(--muted);margin-bottom:10px}
+  .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:12px}
+  .bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+  .dex ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .dex li{padding:6px 8px;border-radius:9px;background:rgba(255,255,255,.04)}
+</style>
+</head>
+<body>
+<header><a href="../">← 홈</a><h1>조용한 낚시터</h1><span></span></header>
+<canvas id="c" width="360" height="480"></canvas>
+<div class="hud"><span>코인 <b id="coins">0</b></span><span>자동 낚시 Lv <b id="lv">0</b></span></div>
+<div id="msg">찌를 던져 보세요</div>
+<div class="btns">
+  <button id="act" class="primary">던지기</button>
+  <button id="up">자동 낚시 업그레이드</button>
+</div>
+<div class="dex">
+  <div class="dex-title"><span>도감</span><span id="dexCount"></span></div>
+  <div class="bar"><i id="dexBar"></i></div>
+  <ul id="dexList"></ul>
+</div>
+<script>
+(() => {
+  const cv = document.getElementById('c'), g = cv.getContext('2d');
+  const FISH = [
+    {n:'붕어', e:'🐟', p:60, v:10,  w:700},
+    {n:'잉어', e:'🎏', p:25, v:30,  w:450},
+    {n:'쏘가리', e:'🐠', p:10, v:80,  w:280},
+    {n:'황금 잉어', e:'✨', p:4, v:250, w:180},
+    {n:'용왕 물고기', e:'🐉', p:1, v:1000, w:110}
+  ];
+  let coins = 0, autoLv = 0, st = 'idle', castT = 0, timer = null, cur = null, lastAuto = 0;
+  let msg = '찌를 던져 보세요', dex = {};
+
+  const pick = () => { let r = Math.random() * 100, s = 0; for (const f of FISH) { s += f.p; if (r < s) return f; } return FISH[0]; };
+  const autoInterval = () => Math.max(3000, 12000 - autoLv * 2000);
+  const upCost = () => 100 * (autoLv + 1) * (autoLv + 1);
+
+  function cast() {
+    st = 'wait'; castT = performance.now(); msg = '찌를 던졌어요...';
+    timer = setTimeout(() => {
+      cur = pick(); st = 'bite'; msg = '!! 지금 챔질!';
+      timer = setTimeout(() => { st = 'idle'; msg = '놓쳤어요 😢'; render(); }, cur.w);
+      render();
+    }, 1500 + Math.random() * 2500);
+    render();
+  }
+
+  function hook() {
+    if (st === 'wait') { clearTimeout(timer); st = 'idle'; msg = '너무 일찍 챔질했어요!'; }
+    else if (st === 'bite') { clearTimeout(timer); catchFish(cur, true); }
+    render();
+  }
+
+  function catchFish(f, manual) {
+    st = 'idle'; coins += f.v; dex[f.n] = (dex[f.n] || 0) + 1;
+    msg = (manual ? '' : '자동 낚시: ') + f.e + ' ' + f.n + ' 획득! +' + f.v + '코인';
+    render();
+  }
+
+  function tap() { st === 'idle' ? cast() : hook(); }
+  cv.addEventListener('click', tap);
+  document.getElementById('act').addEventListener('click', tap);
+  document.getElementById('up').addEventListener('click', () => {
+    if (autoLv >= 5) { msg = '자동 낚시가 최대 레벨이에요'; return render(); }
+    if (coins < upCost()) { msg = '코인이 부족해요 (필요: ' + upCost() + ')'; return render(); }
+    coins -= upCost(); autoLv++; msg = '자동 낚시 Lv ' + autoLv + ' 달성!'; render();
+  });
+
+  function render() {
+    document.getElementById('coins').textContent = coins;
+    document.getElementById('lv').textContent = autoLv;
+    document.getElementById('msg').textContent = msg;
+    const act = document.getElementById('act');
+    act.textContent = st === 'idle' ? '던지기' : '챔질!';
+    const up = document.getElementById('up');
+    up.textContent = autoLv >= 5 ? '최대 레벨' : '자동 낚시 업그레이드 (' + upCost() + ')';
+    const n = Object.keys(dex).length;
+    document.getElementById('dexCount').textContent = n + ' / ' + FISH.length;
+    document.getElementById('dexBar').style.width = (n / FISH.length * 100) + '%';
+    document.getElementById('dexList').innerHTML = FISH.map(f =>
+      '<li>' + (dex[f.n] ? f.e + ' ' + f.n + ' x' + dex[f.n] : '???') + '</li>').join('');
+  }
+
+  function draw(t) {
+    const W = cv.width, H = cv.height, WATER = 300;
+    const sky = g.createLinearGradient(0, 0, 0, WATER);
+    sky.addColorStop(0, '#1d2b4f'); sky.addColorStop(1, '#3a5c8a');
+    g.fillStyle = sky; g.fillRect(0, 0, W, WATER);
+    const sea = g.createLinearGradient(0, WATER, 0, H);
+    sea.addColorStop(0, '#2a6b8f'); sea.addColorStop(1, '#0e3550');
+    g.fillStyle = sea; g.fillRect(0, WATER, W, H - WATER);
+    g.strokeStyle = 'rgba(255,255,255,.15)'; g.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++) {
+      g.beginPath();
+      for (let x = 0; x <= W; x += 6) g.lineTo(x, WATER + 14 + i * 36 + Math.sin(x / 26 + t / 700 + i) * 4);
+      g.stroke();
+    }
+    const bob = Math.sin(t / 300) * 3;
+    const bx = 200, by = st === 'idle' ? WATER - 4 + bob : WATER + 8 + bob + (st === 'bite' ? Math.sin(t / 50) * 6 : 0);
+    g.strokeStyle = 'rgba(230,240,255,.7)'; g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(70, 90); g.lineTo(bx, by); g.stroke();
+    g.strokeStyle = '#c9a36b'; g.lineWidth = 5;
+    g.beginPath(); g.moveTo(40, 110); g.lineTo(70, 90); g.stroke();
+    g.fillStyle = '#ef4444'; g.beginPath(); g.arc(bx, by, 7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(bx, by - 6, 4, 0, Math.PI * 2); g.fill();
+    if (st === 'bite') { g.fillStyle = '#fbbf24'; g.font = 'bold 40px sans-serif'; g.fillText('!', bx + 14, by - 20); }
+    if (st === 'idle' && autoLv > 0) {
+      const left = Math.max(0, autoInterval() - (t - lastAuto));
+      g.fillStyle = 'rgba(255,255,255,.7)'; g.font = '12px sans-serif';
+      g.fillText('자동 ' + Math.ceil(left / 1000) + 's', 12, H - 12);
+    }
+    requestAnimationFrame(draw);
+  }
+
+  setInterval(() => {
+    const now = performance.now();
+    if (autoLv > 0 && st === 'idle' && now - lastAuto >= autoInterval()) {
+      lastAuto = now; catchFish(pick(), false);
+    }
+  }, 250);
+
+  render();
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
