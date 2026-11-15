@@ -9,6 +9,7 @@
 body{background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:10px}
 #hud{display:flex;gap:16px;margin:8px 0;font-size:15px;flex-wrap:wrap;justify-content:center}
 #hud b{color:#facc15}
+#combo{color:#f97316;font-weight:800;min-width:70px;text-align:center}
 canvas{background:#1e293b;border-radius:10px;width:min(94vw,520px);height:auto;touch-action:none}
 #msg{margin-top:8px;font-size:14px;min-height:20px;color:#94a3b8;text-align:center}
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:18px}
@@ -22,6 +23,7 @@ button{padding:12px 28px;font-size:16px;border:0;border-radius:8px;background:#2
   <span>먹이 <b id="eaten">0</b>/<b id="target">4</b></span>
   <span>점수 <b id="score">0</b></span>
   <span>최고 <b id="best">0</b></span>
+  <span id="combo"></span>
 </div>
 <canvas id="c" width="400" height="400"></canvas>
 <div id="msg"></div>
@@ -29,6 +31,7 @@ button{padding:12px 28px;font-size:16px;border:0;border-radius:8px;background:#2
 
 <script>
 const N = 20, CELL = 400 / N, TICK = 180;
+const COMBO_WINDOW = 12; // 이 틱 안에 연속으로 먹으면 콤보
 const HELP = '스와이프 또는 방향키로 이동 · 벽을 넘으면 반대편으로 · ⚡번개 🛡방패 🧲자석';
 const ITEMS = { bolt: '⚡', shield: '🛡', magnet: '🧲' };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -41,6 +44,7 @@ const $ = id => document.getElementById(id);
 const key = (x, y) => x + ',' + y;
 const rnd = n => Math.floor(Math.random() * n);
 const wrap = v => ((v % N) + N) % N;
+const px = v => v * CELL + CELL / 2;
 
 let best = 0;
 try { best = +localStorage.getItem('snakeDefenseBest') || 0; } catch (e) {}
@@ -54,7 +58,8 @@ function init() {
     snake: start, prev: start.map(p => ({ ...p })), tickAt: performance.now(),
     dir: 'right', queue: [], food: null, items: [], obstacles: new Set(), enemies: [],
     stage: 1, eaten: 0, target: 4, score: 0, ticks: 0,
-    shield: true, boltUntil: 0, magnetUntil: 0, over: false
+    shield: true, boltUntil: 0, magnetUntil: 0, over: false,
+    combo: 0, lastEatTick: -999, fx: [], shake: 0, banner: null
   };
   makeStage();
   placeFood();
@@ -92,7 +97,11 @@ function makeStage() {
   S.eaten = 0;
 }
 
-function placeFood() { S.food = freeCell(); }
+// 가끔 황금 사과가 나온다 (2개 먹은 효과 + 큰 점수)
+function placeFood() {
+  S.food = freeCell();
+  S.food.gold = Math.random() < 0.18;
+}
 
 function spawnItem() {
   if (S.items.length >= 2) return;
@@ -102,10 +111,14 @@ function spawnItem() {
 }
 
 function nextStage() {
+  const bonus = 100 * S.stage;
   S.stage++;
+  S.score += bonus;
   makeStage();
   placeFood();
-  flash('🎉 스테이지 ' + S.stage + ' 시작!');
+  S.banner = { text: 'STAGE ' + S.stage, sub: '+' + bonus + ' 보너스', until: performance.now() + 1500 };
+  burst(px(S.snake[0].x), px(S.snake[0].y), '#facc15', 24);
+  flash('🎉 스테이지 ' + S.stage + ' 클리어 보너스 +' + bonus);
 }
 
 function moveEnemies() {
@@ -133,7 +146,7 @@ function pullFood(now) {
   else ny += Math.sign(hd.y - f.y);
   if (nx < 0 || ny < 0 || nx >= N || ny >= N) return;
   if (S.obstacles.has(key(nx, ny)) || S.snake.some(s => s.x === nx && s.y === ny)) return;
-  S.food = { x: nx, y: ny };
+  S.food = { ...S.food, x: nx, y: ny };
 }
 
 function turn(d) {
@@ -150,8 +163,20 @@ function flash(t) {
   msgTimer = setTimeout(() => msg(HELP), 1500);
 }
 
+/* ---------- 효과 (파티클, 떠오르는 글자, 화면 흔들림) ---------- */
+function popText(x, y, t, color) {
+  S.fx.push({ k: 't', x, y, t, c: color, life: 36, max: 36 });
+}
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    S.fx.push({ k: 'p', x, y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, c: color, life: 26, max: 26 });
+  }
+}
+
 function gameOver() {
   S.over = true;
+  S.shake = 14;
+  burst(px(S.snake[0].x), px(S.snake[0].y), '#ef4444', 20);
   if (S.score > best) {
     best = S.score;
     try { localStorage.setItem('snakeDefenseBest', best); } catch (e) {}
@@ -163,6 +188,10 @@ function gameOver() {
 function blockedByShield() {
   if (!S.shield) return false;
   S.shield = false;
+  S.shake = 8;
+  const h = S.snake[0];
+  burst(px(h.x), px(h.y), '#60a5fa', 16);
+  popText(px(h.x), px(h.y) - 10, '방패!', '#60a5fa');
   flash('🛡 방패가 막았어요!');
   return true;
 }
@@ -180,7 +209,6 @@ function tick() {
 
   const [dx, dy] = DIRS[S.dir];
   const hd = S.snake[0];
-  // 벽을 넘으면 반대편으로 이동
   const nx = wrap(hd.x + dx), ny = wrap(hd.y + dy);
 
   if (S.enemies.some(e => e.x === hd.x && e.y === hd.y)) {
@@ -199,8 +227,18 @@ function tick() {
 
   S.snake.unshift({ x: nx, y: ny });
   if (eating) {
-    S.eaten++;
-    S.score += 10 * S.stage;
+    const gold = !!S.food.gold;
+    // 콤보: 짧은 간격으로 연속 획득하면 배수 증가
+    if (S.ticks - S.lastEatTick <= COMBO_WINDOW) S.combo++;
+    else S.combo = 1;
+    S.lastEatTick = S.ticks;
+    const mult = Math.min(S.combo, 5);
+    const pts = (gold ? 50 : 10) * S.stage * mult;
+    S.eaten += gold ? 2 : 1;
+    S.score += pts;
+    burst(px(nx), px(ny), gold ? '#facc15' : '#f87171', gold ? 20 : 12);
+    popText(px(nx), px(ny) - 8, '+' + pts, gold ? '#facc15' : '#fde68a');
+    if (mult > 1) flash('🔥 ' + mult + '배 콤보!');
     S.food = null;
     if (S.eaten >= S.target) nextStage();
     else placeFood();
@@ -215,6 +253,8 @@ function tick() {
     if (t === 'bolt') S.boltUntil = now + 6000;
     if (t === 'shield') S.shield = true;
     if (t === 'magnet') S.magnetUntil = now + 7000;
+    burst(px(nx), px(ny), '#a78bfa', 14);
+    popText(px(nx), px(ny) - 8, ITEMS[t], '#e9d5ff');
     flash(ITEMS[t] + (t === 'bolt' ? ' 번개! 적 정지' : t === 'shield' ? ' 방패 획득' : ' 자석 발동'));
   }
 
@@ -311,9 +351,10 @@ function drawHead(pts, now) {
   const ang = Math.atan2(h.y - nk.y, h.x - nk.x);
   const r = widthAt(0, pts.length) / 2;
 
-  // 보호막 표시
+  // 보호막 표시 (은은하게 맥동)
   if (S.shield) {
-    ctx.strokeStyle = 'rgba(96,165,250,.9)';
+    const pulse = 0.6 + 0.4 * Math.sin(now / 150);
+    ctx.strokeStyle = 'rgba(96,165,250,' + pulse + ')';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(h.x, h.y, r + 5, 0, Math.PI * 2);
@@ -381,14 +422,75 @@ function drawHead(pts, now) {
 }
 
 function text(t, x, y) {
-  ctx.fillText(t, x * CELL + CELL / 2, y * CELL + CELL / 2);
+  ctx.fillText(t, px(x), px(y));
+}
+
+function drawFood(now) {
+  const f = S.food;
+  if (!f) return;
+  if (f.gold) {
+    const pulse = 0.5 + 0.5 * Math.sin(now / 200);
+    ctx.fillStyle = 'rgba(250,204,21,' + (0.25 + 0.2 * pulse) + ')';
+    ctx.beginPath();
+    ctx.arc(px(f.x), px(f.y), CELL * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    text('🍏', f.x, f.y);
+  } else {
+    text('🍎', f.x, f.y);
+  }
+}
+
+function drawFx() {
+  S.fx.forEach(f => {
+    const a = f.life / f.max;
+    ctx.globalAlpha = a;
+    if (f.k === 'p') {
+      f.x += f.vx;
+      f.y += f.vy;
+      f.vx *= 0.9; f.vy *= 0.9;
+      ctx.fillStyle = f.c;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 2.5 * a + 1, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      f.y -= 0.6;
+      ctx.fillStyle = f.c;
+      ctx.font = 'bold 14px system-ui, sans-serif';
+      ctx.fillText(f.t, f.x, f.y);
+    }
+    f.life--;
+  });
+  ctx.globalAlpha = 1;
+  S.fx = S.fx.filter(f => f.life > 0);
+}
+
+function drawBanner(now) {
+  const b = S.banner;
+  if (!b || now > b.until) return;
+  const a = Math.min(1, (b.until - now) / 400);
+  ctx.globalAlpha = a;
+  ctx.fillStyle = '#facc15';
+  ctx.font = 'bold 36px system-ui, sans-serif';
+  ctx.fillText(b.text, 200, 180);
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '16px system-ui, sans-serif';
+  ctx.fillText(b.sub, 200, 212);
+  ctx.globalAlpha = 1;
 }
 
 function render() {
   const now = performance.now();
   const t = Math.min(1, (now - S.tickAt) / TICK);
 
-  ctx.clearRect(0, 0, 400, 400);
+  ctx.save();
+  // 화면 흔들림
+  if (S.shake > 0) {
+    const m = S.shake;
+    ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
+    S.shake = Math.max(0, S.shake - 1);
+  }
+
+  ctx.clearRect(-20, -20, 440, 440);
   if (Date.now() < S.boltUntil) {
     ctx.fillStyle = 'rgba(250,204,21,.12)';
     ctx.fillRect(0, 0, 400, 400);
@@ -402,16 +504,23 @@ function render() {
   ctx.font = (CELL * 0.8) + 'px serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  if (S.food) text('🍎', S.food.x, S.food.y);
+  drawFood(now);
   S.items.forEach(i => text(ITEMS[i.t], i.x, i.y));
   S.enemies.forEach(e => text('🐭', e.x, e.y));
 
   drawSnake(t, now);
+  drawFx();
+  ctx.textAlign = 'center';
+  drawBanner(now);
+
+  ctx.restore();
 
   $('stage').textContent = S.stage;
   $('eaten').textContent = S.eaten;
   $('target').textContent = S.target;
   $('score').textContent = S.score;
+  const comboNow = S.ticks - S.lastEatTick <= COMBO_WINDOW && S.combo > 1;
+  $('combo').textContent = comboNow ? '🔥 x' + Math.min(S.combo, 5) : '';
   requestAnimationFrame(render);
 }
 
