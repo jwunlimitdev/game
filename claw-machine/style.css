@@ -1,0 +1,28 @@
+*{box-sizing:border-box}
+body{margin:0;background:#1a1030;color:#fff;font-family:system-ui,"Malgun Gothic",sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:12px;user-select:none;-webkit-user-select:none}
+h1{margin:6px 0;font-size:24px}
+h2{margin:0 0 8px;font-size:18px}
+#shops{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+#shops button{font-size:13px;padding:8px 10px;min-width:0;background:#4a3778}
+#shops button.active{background:#ff6fa5}
+#shopInfo{font-size:13px;color:#cfc3f0;margin-bottom:6px}
+#hud{display:flex;gap:14px;margin-bottom:8px;font-size:15px;flex-wrap:wrap;justify-content:center}
+#hud b{color:#ffe066}
+canvas{border-radius:12px;max-width:100%;height:auto;touch-action:none}
+#controls{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+button{font-size:18px;padding:12px 18px;border:none;border-radius:10px;background:#ff6fa5;color:#fff;font-weight:bold;cursor:pointer;min-width:72px;touch-action:manipulation}
+button.side{background:#6fb8ff}
+button.drop{background:#ffb84d;min-width:110px}
+button.panel{background:#7ed957;font-size:15px}
+button:disabled{background:#555;cursor:default}
+#msg{min-height:26px;margin-top:8px;font-size:15px;color:#ffe066;text-align:center}
+.tabs{display:flex;gap:8px;margin-top:10px}
+.panel-box{width:100%;max-width:480px;margin-top:12px;background:#2b1b4d;border-radius:12px;padding:12px}
+#dexGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cell{background:#3a2366;border-radius:10px;padding:8px 4px;text-align:center;font-size:12px}
+.cell .dot{width:36px;height:36px;border-radius:50%;margin:0 auto 4px;border:2px solid #222}
+.cell.off{opacity:.6}
+#missionList{display:flex;flex-direction:column;gap:6px}
+.mission{display:flex;justify-content:space-between;align-items:center;background:#3a2366;border-radius:10px;padding:10px 12px;font-size:14px}
+.mission b{color:#ffe066}
+.mission.done{opacity:.5;text-decoration:line-through}
