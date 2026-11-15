@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>인형뽑기</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#1a1030;color:#fff;font-family:system-ui,"Malgun Gothic",sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:12px;user-select:none;-webkit-user-select:none}
+h1{margin:6px 0;font-size:24px}
+#hud{display:flex;gap:18px;margin-bottom:8px;font-size:16px}
+#hud b{color:#ffe066}
+canvas{background:#2b1b4d;border-radius:12px;max-width:100%;height:auto;touch-action:none}
+#controls{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+button{font-size:18px;padding:12px 18px;border:none;border-radius:10px;background:#ff6fa5;color:#fff;font-weight:bold;cursor:pointer;min-width:72px;touch-action:manipulation}
+button.side{background:#6fb8ff}
+button.drop{background:#ffb84d;min-width:110px}
+button:disabled{background:#555;cursor:default}
+#msg{height:26px;margin-top:8px;font-size:16px;color:#ffe066;text-align:center}
+</style>
+</head>
+<body>
+<h1>🧸 인형뽑기</h1>
+<div id="hud">
+  <span>코인 <b id="coins">0</b></span>
+  <span>점수 <b id="score">0</b></span>
+  <span>획득 <b id="prizes">0</b></span>
+</div>
+<canvas id="c" width="480" height="640"></canvas>
+<div id="controls">
+  <button class="side" id="left">◀</button>
+  <button class="drop" id="drop">내려보내기</button>
+  <button class="side" id="right">▶</button>
+  <button id="recharge">코인 +5</button>
+</div>
+<div id="msg"></div>
+
+<script>
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const W = 480, H = 640;
+const TOP = 90, FLOOR = 500, DROP_Y = 455, BIN_X = 400, MIN_X = 50, MAX_X = 430;
+const COLORS = ['#ff7eb6', '#ffd166', '#7ee8fa', '#b5ffb0', '#c59bff', '#ffb088'];
+const TYPES = [
+  { name: '토끼', value: 100, grip: 0.55, r: 22 },
+  { name: '곰',   value: 300, grip: 0.40, r: 26 },
+  { name: '유니콘', value: 500, grip: 0.28, r: 28 }
+];
+
+let state, clawX, clawY, clawOpen, dir, grabT, dolls, held, coins, score, prizes;
+let msgTimer = 0;
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+function makeDoll() {
+  const t = TYPES[Math.floor(Math.random() * TYPES.length)];
+  return {
+    t, r: t.r,
+    x: rand(60, 360),
+    y: FLOOR - t.r,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)]
+  };
+}
+
+function fillDolls(n) {
+  while (dolls.length < n) dolls.push(makeDoll());
+}
+
+function setMsg(text) {
+  document.getElementById('msg').textContent = text;
+  msgTimer = 120;
+}
+
+function updHud() {
+  document.getElementById('coins').textContent = coins;
+  document.getElementById('score').textContent = score;
+  document.getElementById('prizes').textContent = prizes;
+}
+
+function reset() {
+  state = 'idle';
+  clawX = 240; clawY = TOP; clawOpen = true; dir = 0; grabT = 0;
+  dolls = []; fillDolls(10);
+  held = null; coins = 10; score = 0; prizes = 0;
+  updHud();
+  setMsg('방향키로 위치를 맞추고 내려보내기!');
+}
+
+function drop() {
+  if (state !== 'idle') return;
+  if (coins <= 0) { setMsg('코인이 없어요! 코인을 충전하세요'); return; }
+  coins--; updHud();
+  state = 'down'; clawY = TOP; clawOpen = true;
+}
+
+function tryGrab() {
+  const cand = dolls
+    .filter(d => Math.abs(d.x - clawX) < d.r + 8)
+    .sort((a, b) => Math.abs(a.x - clawX) - Math.abs(b.x - clawX))[0];
+  if (cand && Math.random() < cand.t.grip) {
+    held = cand;
+    dolls = dolls.filter(d => d !== cand);
+    setMsg(cand.t.name + ' 잡았다! 위로 올라갑니다');
+  } else {
+    setMsg(cand ? '아쉽! 놓쳤어요' : '헛탕! 아무것도 없어요');
+  }
+}
+
+function release() {
+  score += held.t.value;
+  prizes++;
+  setMsg(held.t.name + ' 획득! +' + held.t.value + '점');
+  held = null;
+  fillDolls(10);
+  updHud();
+}
+
+function update() {
+  if (msgTimer > 0 && --msgTimer === 0 && state === 'idle' && coins <= 0) {
+    setMsg('코인이 없어요! 코인을 충전하세요');
+  }
+  if (state === 'idle') {
+    if (dir) clawX = clamp(clawX + dir * 3, MIN_X, MAX_X);
+  } else if (state === 'down') {
+    clawY += 4;
+    if (clawY >= DROP_Y) { clawY = DROP_Y; state = 'grab'; grabT = 0; clawOpen = false; tryGrab(); }
+  } else if (state === 'grab') {
+    if (++grabT > 30) state = 'up';
+  } else if (state === 'up') {
+    clawY -= 3;
+    if (clawY <= TOP) { clawY = TOP; state = held ? 'move' : 'idle'; }
+  } else if (state === 'move') {
+    clawX += 4;
+    if (clawX >= BIN_X) {
+      clawX = BIN_X;
+      if (held) release();
+      state = 'idle';
+    }
+  }
+  if (held) { held.x = clawX; held.y = clawY + 30; }
+}
+
+function drawDoll(d) {
+  const { x, y, r, color } = d;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x - r * 0.7, y - r * 0.8, r * 0.38, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + r * 0.7, y - r * 0.8, r * 0.38, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(x - r * 0.35, y - r * 0.15, r * 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + r * 0.35, y - r * 0.15, r * 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x, y + r * 0.2, r * 0.25, 0.1, Math.PI - 0.1); ctx.stroke();
+  if (d.t.name === '유니콘') {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.moveTo(x, y - r * 1.6); ctx.lineTo(x - 5, y - r * 0.9); ctx.lineTo(x + 5, y - r * 0.9); ctx.fill();
+  }
+}
+
+function drawClaw() {
+  ctx.strokeStyle = '#ccc'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(clawX, TOP - 20); ctx.lineTo(clawX, clawY); ctx.stroke();
+  ctx.fillStyle = '#888';
+  ctx.fillRect(clawX - 14, clawY - 12, 28, 14);
+  const spread = clawOpen ? 20 : 6;
+  ctx.strokeStyle = '#ddd'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  [-1, 0, 1].forEach(i => {
+    ctx.beginPath();
+    ctx.moveTo(clawX + i * 6, clawY + 2);
+    ctx.lineTo(clawX + i * spread, clawY + 26);
+    ctx.stroke();
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // 기계 외형
+  ctx.fillStyle = '#3a2366';
+  ctx.fillRect(0, 0, W, H);
+  // 상단 레일
+  ctx.fillStyle = '#ffd166';
+  ctx.fillRect(20, TOP - 40, W - 40, 16);
+  // 유리 영역
+  ctx.fillStyle = 'rgba(160,220,255,0.08)';
+  ctx.fillRect(20, TOP - 20, W - 40, FLOOR - TOP + 40);
+  // 바닥
+  ctx.fillStyle = '#6b4a9b';
+  ctx.fillRect(20, FLOOR, W - 40, H - FLOOR - 60);
+  // 배출구
+  ctx.fillStyle = '#111';
+  ctx.fillRect(BIN_X - 30, FLOOR + 10, 60, 40);
+  ctx.fillStyle = '#ffe066'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('배출구', BIN_X, FLOOR + 66);
+
+  dolls.forEach(drawDoll);
+  drawClaw();
+  if (held) drawDoll(held);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// 입력 - 키보드
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') dir = -1;
+  else if (e.key === 'ArrowRight' || e.key === 'd') dir = 1;
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); drop(); }
+});
+document.addEventListener('keyup', e => {
+  if (['ArrowLeft', 'a', 'ArrowRight', 'd'].includes(e.key)) dir = 0;
+});
+
+// 입력 - 버튼 (누르고 있으면 계속 이동)
+function bindHold(id, d) {
+  const el = document.getElementById(id);
+  const start = e => { e.preventDefault(); dir = d; };
+  const stop = () => { dir = 0; };
+  el.addEventListener('pointerdown', start);
+  el.addEventListener('pointerup', stop);
+  el.addEventListener('pointerleave', stop);
+  el.addEventListener('pointercancel', stop);
+}
+bindHold('left', -1);
+bindHold('right', 1);
+document.getElementById('drop').onclick = drop;
+document.getElementById('recharge').onclick = () => {
+  coins += 5; updHud(); setMsg('코인 5개를 충전했어요!');
+};
+
+reset();
+loop();
+</script>
+</body>
+</html>
