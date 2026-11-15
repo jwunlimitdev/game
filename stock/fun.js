@@ -1,4 +1,4 @@
-/* ---------- 재미 기능: 오늘의 미션, 주가 예측, 효과음 ----------
+/* ---------- 재미 기능: 오늘의 미션, 주가 예측, 효과음, 보너스 별도 집계 ----------
    game.js 뒤에 로드되며, game.js의 전역 변수와 함수를 그대로 사용합니다. */
 (() => {
  const KEY="rewung-fun-v1";
@@ -15,9 +15,33 @@
   {text:"현금을 총자산의 절반 이하로 투자하기",ok:()=>cash<=totalAssets()*0.5}
  ];
 
- let FUN={missionDoneDay:0,pred:null,wins:0,guesses:0,sound:true};
+ let FUN={missionDoneDay:0,pred:null,wins:0,guesses:0,sound:true,bonus:0};
  const saveFun=()=>{try{localStorage.setItem(KEY,JSON.stringify(FUN))}catch(e){}};
- const loadFun=()=>{try{Object.assign(FUN,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}};
+ const loadFun=()=>{try{Object.assign(FUN,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}; FUN.bonus=Number(FUN.bonus)||0;};
+
+ /* ---------- 보너스 집계와 손익 표시 ----------
+    보너스(돌림판 현금·무료 주식, 미션·예측 보상)는 투자 손익에서 제외해 따로 보여줍니다. */
+ const costTotal=()=>Object.values(holdings).reduce((a,h)=>a+(h.cost||0),0);
+ const addBonus=n=>{FUN.bonus+=n;saveFun();};
+ const sgnWon=n=>(n>0?"+":n<0?"-":"")+"₩"+Math.abs(Math.round(n)).toLocaleString("ko-KR");
+
+ function showProfit(){
+  const total=totalAssets();
+  const inv=total-INITIAL_CASH-FUN.bonus;
+  const rate=inv/INITIAL_CASH*100;
+  const el=$("profit");
+  el.textContent=sgnWon(inv)+" ("+pct(rate)+")";
+  el.className="stat-value "+(inv>=0?"green":"red");
+  let note=$("bonusLine");
+  if(!note){
+   note=document.createElement("div");
+   note.id="bonusLine";
+   note.className="footer-note";
+   note.style.margin="6px 0 0";
+   el.parentNode.appendChild(note);
+  }
+  note.textContent=`보너스 ${sgnWon(FUN.bonus)} · 돌림판·미션·예측 보상은 손익에서 제외`;
+ }
 
  /* ---------- 효과음 (Web Audio, 외부 파일 없음) ---------- */
  let audioCtx=null;
@@ -65,7 +89,7 @@
   const moved=s.price!==p.price;
   const hit=moved&&((p.dir==="up")===(s.price>p.price));
   if(hit){
-   FUN.wins++;cash+=PREDICT_REWARD;
+   FUN.wins++;cash+=PREDICT_REWARD;addBonus(PREDICT_REWARD);
    toast(`🔮 예측 적중! ${s.name} 보상 ₩200,000`);
    celebrate();
   }else if(!moved){
@@ -81,7 +105,7 @@
   const m=MISSIONS[(day-1)%MISSIONS.length];
   if(FUN.missionDoneDay!==day&&m.ok()){
    FUN.missionDoneDay=day;
-   cash+=MISSION_REWARD;
+   cash+=MISSION_REWARD;addBonus(MISSION_REWARD);
    toast("🎯 미션 성공! 보상 ₩300,000");
    celebrate();
    saveFun();
@@ -150,13 +174,37 @@
   });
  }
 
- /* 기존 함수에 기능을 덧붙입니다 (원래 동작은 그대로 유지) */
+ /* ---------- 기존 함수에 기능을 덧붙입니다 (원래 동작은 그대로 유지) ---------- */
  const _toast=toast;
  toast=function(msg){_toast(msg);sfx(msg);};
+
  const _renderAll=renderAll;
  renderAll=function(){_renderAll();funTick();};
+
+ const _renderStats=renderStats;
+ renderStats=function(){_renderStats();showProfit();};
+
+ /* 돌림판 결과가 현금(또는 무료 주식 매입가)을 늘리거나 줄이면 그만큼 보너스로 기록 */
+ const _finishSpin=finishSpin;
+ finishSpin=function(idx){
+  const c0=cash,k0=costTotal();
+  _finishSpin(idx);
+  addBonus((cash-c0)+(costTotal()-k0));
+  showProfit();
+ };
+
+ /* 게임 초기화 시 보너스와 예측 기록도 함께 초기화 (확인 창을 취소한 경우는 게임 상태가 그대로이므로 건너뜀) */
+ $("reset").addEventListener("click",()=>setTimeout(()=>{
+  if(day===1&&tradeLog.length===0&&newsLog.length===0&&cash===INITIAL_CASH&&Object.keys(holdings).length===0){
+   FUN={missionDoneDay:0,pred:null,wins:0,guesses:0,sound:FUN.sound,bonus:0};
+   saveFun();
+   funTick();
+   showProfit();
+  }
+ },0));
 
  loadFun();
  buildPanel();
  funTick();
+ showProfit();
 })();
