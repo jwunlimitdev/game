@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>러닝 액션</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1b1f2a; color: #fff; font-family: sans-serif; overflow: hidden; }
+  #wrap { position: relative; width: 100%; height: 100%; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #hud { position: absolute; top: 12px; left: 16px; font-size: 20px; font-weight: bold; pointer-events: none; }
+  #msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,0.55); font-size: 18px; text-align: center; }
+  #msg h1 { margin: 0; font-size: 42px; }
+  #msg button { padding: 12px 28px; font-size: 18px; border: none; border-radius: 8px; background: #ffb703; color: #222; cursor: pointer; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="hud">점수 0</div>
+  <div id="msg">
+    <h1 id="title">러닝 액션</h1>
+    <div id="desc">스페이스바 / 화면 터치로 점프<br>더블 점프 가능 · 코인을 모으세요</div>
+    <button id="startBtn">시작</button>
+  </div>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+const msg = document.getElementById('msg');
+const titleEl = document.getElementById('title');
+const descEl = document.getElementById('desc');
+const startBtn = document.getElementById('startBtn');
+
+let W, H, groundY;
+function resize() {
+  W = canvas.width = canvas.clientWidth * devicePixelRatio;
+  H = canvas.height = canvas.clientHeight * devicePixelRatio;
+  groundY = H * 0.78;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const GRAVITY = 0.6;
+const JUMP_V = -13;
+let player, obstacles, coins, particles, speed, score, distance, running, lastTime, spawnTimer, coinTimer, bgOffset, bestScore = 0;
+
+function reset() {
+  const s = devicePixelRatio;
+  player = { x: W * 0.15, y: 0, vy: 0, w: 36 * s, h: 48 * s, jumps: 0, onGround: true };
+  player.y = groundY - player.h;
+  obstacles = [];
+  coins = [];
+  particles = [];
+  speed = 6 * s;
+  score = 0;
+  distance = 0;
+  spawnTimer = 0;
+  coinTimer = 0;
+  bgOffset = 0;
+  running = true;
+}
+
+function jump() {
+  if (!running) return;
+  if (player.jumps < 2) {
+    player.vy = JUMP_V * devicePixelRatio;
+    player.jumps++;
+    player.onGround = false;
+    burst(player.x + player.w / 2, player.y + player.h, '#ffb703', 6);
+  }
+}
+
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    particles.push({ x, y, vx: (Math.random() - 0.5) * 4 * devicePixelRatio, vy: (Math.random() - 0.5) * 4 * devicePixelRatio, life: 30, color });
+  }
+}
+
+function spawnObstacle() {
+  const s = devicePixelRatio;
+  const h = (30 + Math.random() * 50) * s;
+  const w = (22 + Math.random() * 18) * s;
+  obstacles.push({ x: W + 20, y: groundY - h, w, h, color: '#e63946' });
+}
+
+function spawnCoin() {
+  const s = devicePixelRatio;
+  const y = groundY - (60 + Math.random() * 120) * s;
+  coins.push({ x: W + 20, y, r: 9 * s, taken: false });
+}
+
+function rect(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function update(dt) {
+  const s = devicePixelRatio;
+  distance += speed;
+  score = Math.floor(distance / 10);
+  speed = (6 + score / 300) * s;
+  bgOffset = (bgOffset + speed * 0.5) % W;
+
+  player.vy += GRAVITY * s;
+  player.y += player.vy;
+  if (player.y + player.h >= groundY) {
+    player.y = groundY - player.h;
+    player.vy = 0;
+    player.jumps = 0;
+    player.onGround = true;
+  }
+
+  spawnTimer -= dt;
+  if (spawnTimer <= 0) {
+    spawnObstacle();
+    spawnTimer = 900 / (1 + score / 600) * (0.6 + Math.random() * 0.8);
+  }
+  coinTimer -= dt;
+  if (coinTimer <= 0) {
+    spawnCoin();
+    coinTimer = 700 + Math.random() * 900;
+  }
+
+  for (const o of obstacles) o.x -= speed;
+  for (const c of coins) c.x -= speed;
+  obstacles = obstacles.filter(o => o.x + o.w > -20);
+  coins = coins.filter(c => c.x + c.r > -20 && !c.taken);
+
+  for (const c of coins) {
+    const cx = player.x + player.w / 2, cy = player.y + player.h / 2;
+    const dx = c.x - cx, dy = c.y - cy;
+    if (dx * dx + dy * dy < (c.r + player.w / 2) * (c.r + player.w / 2) * 0.8) {
+      c.taken = true;
+      distance += 150;
+      burst(c.x, c.y, '#ffd60a', 8);
+    }
+  }
+
+  for (const o of obstacles) {
+    if (rect(player, o)) {
+      gameOver();
+      return;
+    }
+  }
+
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.2 * s; p.life--;
+  }
+  particles = particles.filter(p => p.life > 0);
+
+  hud.textContent = '점수 ' + score + '   최고 ' + bestScore;
+}
+
+function gameOver() {
+  running = false;
+  bestScore = Math.max(bestScore, score);
+  titleEl.textContent = '게임 오버';
+  descEl.innerHTML = '점수 ' + score + '<br>최고 ' + bestScore;
+  startBtn.textContent = '다시 시작';
+  msg.classList.remove('hidden');
+}
+
+function draw() {
+  const s = devicePixelRatio;
+  ctx.fillStyle = '#1b1f2a';
+  ctx.fillRect(0, 0, W, H);
+
+  // 배경 산
+  ctx.fillStyle = '#2a3145';
+  for (let i = -1; i < 4; i++) {
+    const x = i * W / 2 - bgOffset * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(x, groundY);
+    ctx.lineTo(x + W / 4, groundY - H * 0.25);
+    ctx.lineTo(x + W / 2, groundY);
+    ctx.fill();
+  }
+
+  // 지면
+  ctx.fillStyle = '#3a4560';
+  ctx.fillRect(0, groundY, W, H - groundY);
+  ctx.fillStyle = '#4b5878';
+  for (let x = -bgOffset; x < W; x += 60 * s) {
+    ctx.fillRect(x, groundY + 10 * s, 30 * s, 4 * s);
+  }
+
+  // 코인
+  for (const c of coins) {
+    ctx.beginPath();
+    ctx.fillStyle = '#ffd60a';
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 장애물
+  for (const o of obstacles) {
+    ctx.fillStyle = o.color;
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+  }
+
+  // 플레이어
+  ctx.fillStyle = '#ffb703';
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+  ctx.fillStyle = '#222';
+  ctx.fillRect(player.x + player.w * 0.6, player.y + player.h * 0.25, 5 * s, 5 * s);
+
+  // 파티클
+  for (const p of particles) {
+    ctx.globalAlpha = p.life / 30;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, 4 * s, 4 * s);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function loop(t) {
+  const dt = lastTime ? t - lastTime : 16;
+  lastTime = t;
+  if (running) update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function start() {
+  reset();
+  msg.classList.add('hidden');
+  lastTime = 0;
+}
+
+startBtn.addEventListener('click', start);
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (running) jump();
+    else if (msg.classList.contains('hidden') === false) start();
+  }
+});
+canvas.addEventListener('pointerdown', () => {
+  if (running) jump();
+});
+
+reset();
+running = false;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
