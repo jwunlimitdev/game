@@ -12,6 +12,7 @@
   const STAGES = 20, goal = k => 200 + k * 120, zoneOf = k => Math.floor(k / 4), WATER = 290;
   const stars = Array.from({length: 40}, () => ({x: Math.random() * 360, y: Math.random() * 200, p: Math.random() * 6}));
   let coins = 0, autoLv = 0, rodLv = 0, combo = 0, best = 0;
+  let eq = {rod: null, bob: null, bait: null};
   let stage = 0, maxStage = 0, prog = Array(STAGES).fill(0), cleared = Array(STAGES).fill(false);
   let st = 'idle', cur = null, timer = null, lastAuto = 0, dex = {}, floats = [], parts = [], react = null, shakeUntil = 0;
   let msg = '찌를 던져 보세요! 스테이지 1부터 시작해요';
@@ -19,7 +20,10 @@
   const autoInterval = () => Math.max(1500, 12000 - autoLv * 550);
   const autoCost = () => 100 * (autoLv + 1) ** 2;
   const rodCost = () => 150 * (rodLv + 1) ** 2;
-  const winTime = f => f.win + rodLv * 100;
+  const rodBonus = () => eq.rod ? eq.rod.b : 0;
+  const goldChance = () => 0.04 + (eq.bait ? eq.bait.b / 100 : 0);
+  const coinMult = () => 1 + (eq.bob ? eq.bob.b / 100 : 0);
+  const winTime = f => f.win + rodLv * 100 + rodBonus();
 
   function pick() {
     const list = FISH[zoneOf(stage)], tot = list.reduce((s, f) => s + f.w, 0);
@@ -31,7 +35,7 @@
   function cast() {
     st = 'wait'; msg = '찌가 물 위에 떠 있어요...';
     timer = setTimeout(() => {
-      cur = {...pick(), gold: Math.random() < 0.04};
+      cur = {...pick(), gold: Math.random() < goldChance()};
       st = 'bite'; msg = '!! 지금 챔질!';
       timer = setTimeout(miss, winTime(cur));
       render();
@@ -54,7 +58,7 @@
 
   function catchFish(f, auto) {
     const mult = auto ? 1 : 1 + Math.min(combo, 10) * 0.1;
-    const val = Math.round(f.v * (f.gold ? 5 : 1) * mult);
+    const val = Math.round(f.v * (f.gold ? 5 : 1) * mult * coinMult());
     if (!auto) { combo++; best = Math.max(best, combo); }
     coins += val; prog[stage] += val; dex[f.n] = true; st = 'idle';
     const hot = f.gold || f.t >= 4, color = hot ? '#fde047' : '#bbf7d0', now = performance.now();
@@ -103,6 +107,7 @@
     $('act').textContent = st === 'idle' ? '던지기' : '챔질!';
     $('up').textContent = autoLv >= MAX_LV ? '자동 최대 Lv' + MAX_LV : '자동 낚시 Lv' + autoLv + ' (' + autoCost() + ')';
     $('rod').textContent = rodLv >= MAX_LV ? '낚시대 최대 Lv' + MAX_LV : '낚시대 Lv' + rodLv + ' (' + rodCost() + ')';
+    $('eq').textContent = '장비  ' + ['rod', 'bob', 'bait'].map(k => eq[k] ? eq[k].e + ' ' + eq[k].n : '빈칸').join('  ·  ');
     $('stageInfo').textContent = '스테이지 ' + (stage + 1) + ' / 20 · ' + P().n + ' · ' + prog[stage] + ' / ' + goal(stage);
     $('stageBar').style.width = Math.min(100, prog[stage] / goal(stage) * 100) + '%';
     $('stages').innerHTML = Array.from({length: STAGES}, (_, i) =>
@@ -187,6 +192,17 @@
     requestAnimationFrame(draw);
   }
 
+  window.FG = {
+    coins: () => coins,
+    spend(n) { if (coins < n) return false; coins -= n; render(); return true; },
+    give(item) {
+      const cur = eq[item.type], equip = !cur || item.r >= cur.r;
+      if (equip) eq[item.type] = item;
+      render(); return equip;
+    },
+    render
+  };
+
   cv.addEventListener('click', tap);
   $('act').addEventListener('click', tap);
   $('up').addEventListener('click', () => upgrade('auto'));
@@ -198,7 +214,7 @@
   setInterval(() => {
     const now = performance.now();
     if (autoLv > 0 && st === 'idle' && now - lastAuto >= autoInterval()) {
-      lastAuto = now; catchFish({...pick(), gold: Math.random() < 0.04}, true);
+      lastAuto = now; catchFish({...pick(), gold: Math.random() < goldChance()}, true);
     }
   }, 250);
 
