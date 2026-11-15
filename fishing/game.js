@@ -1,6 +1,7 @@
 (() => {
   const cv = document.getElementById('c'), g = cv.getContext('2d');
   const $ = id => document.getElementById(id);
+  const MAX_LV = 20;
   const MULT = [1, 2, 3.5, 6, 10];
   const TIER = [null, {w:50, v:10, win:700}, {w:28, v:25, win:550}, {w:14, v:60, win:420}, {w:6, v:140, win:300}, {w:2, v:350, win:200}];
   const FISH = ZONES.map((z, zi) => z.fish.split(',').map(s => {
@@ -15,10 +16,10 @@
   let st = 'idle', cur = null, timer = null, lastAuto = 0, dex = {}, floats = [], parts = [], react = null, shakeUntil = 0;
   let msg = '찌를 던져 보세요! 스테이지 1부터 시작해요';
   const P = () => ZONES[zoneOf(stage)];
-  const autoInterval = () => Math.max(2500, 12000 - autoLv * 1800);
+  const autoInterval = () => Math.max(1500, 12000 - autoLv * 550);
   const autoCost = () => 100 * (autoLv + 1) ** 2;
   const rodCost = () => 150 * (rodLv + 1) ** 2;
-  const winTime = f => f.win + rodLv * 150;
+  const winTime = f => f.win + rodLv * 100;
 
   function pick() {
     const list = FISH[zoneOf(stage)], tot = list.reduce((s, f) => s + f.w, 0);
@@ -71,7 +72,7 @@
     const bonus = Math.floor(goal(stage) * 0.3); coins += bonus;
     msg = '🎉 스테이지 ' + (stage + 1) + ' 클리어! 보너스 +' + bonus;
     if (stage < STAGES - 1) { stage++; maxStage = Math.max(maxStage, stage); msg += ' → 스테이지 ' + (stage + 1) + ' 시작'; }
-    else msg += ' 전설의 낚시꾼 달성 🏆';
+    else msg += ' 전설의 낚시꼼 달성 🏆';
   }
 
   function tap() { st === 'idle' ? cast() : hook(); }
@@ -83,13 +84,13 @@
 
   function upgrade(kind) {
     if (kind === 'auto') {
-      if (autoLv >= 5) msg = '자동 낚시 최대 레벨이에요';
+      if (autoLv >= MAX_LV) msg = '자동 낚시 최대 레벨(' + MAX_LV + ')이에요';
       else if (coins < autoCost()) msg = '코인이 부족해요 (필요: ' + autoCost() + ')';
       else { coins -= autoCost(); autoLv++; msg = '자동 낚시 Lv ' + autoLv + ' 달성!'; }
     } else {
-      if (rodLv >= 4) msg = '낚시대 최대 강화예요';
+      if (rodLv >= MAX_LV) msg = '낚시대 최대 레벨(' + MAX_LV + ')이에요';
       else if (coins < rodCost()) msg = '코인이 부족해요 (필요: ' + rodCost() + ')';
-      else { coins -= rodCost(); rodLv++; msg = '낚시대 Lv ' + rodLv + ' 강화! 챔질 시간 +0.15초'; }
+      else { coins -= rodCost(); rodLv++; msg = '낚시대 Lv ' + rodLv + ' 강화! 챔질 시간 +0.1초'; }
     }
     render();
   }
@@ -100,8 +101,8 @@
     $('best').textContent = best;
     $('msg').textContent = msg;
     $('act').textContent = st === 'idle' ? '던지기' : '챔질!';
-    $('up').textContent = autoLv >= 5 ? '자동 최대' : '자동 낚시 Lv' + autoLv + ' (' + autoCost() + ')';
-    $('rod').textContent = rodLv >= 4 ? '낚시대 최대' : '낚시대 Lv' + rodLv + ' (' + rodCost() + ')';
+    $('up').textContent = autoLv >= MAX_LV ? '자동 최대 Lv' + MAX_LV : '자동 낚시 Lv' + autoLv + ' (' + autoCost() + ')';
+    $('rod').textContent = rodLv >= MAX_LV ? '낚시대 최대 Lv' + MAX_LV : '낚시대 Lv' + rodLv + ' (' + rodCost() + ')';
     $('stageInfo').textContent = '스테이지 ' + (stage + 1) + ' / 20 · ' + P().n + ' · ' + prog[stage] + ' / ' + goal(stage);
     $('stageBar').style.width = Math.min(100, prog[stage] / goal(stage) * 100) + '%';
     $('stages').innerHTML = Array.from({length: STAGES}, (_, i) =>
