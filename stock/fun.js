@@ -17,12 +17,13 @@
 
  let FUN={missionDoneDay:0,pred:null,wins:0,guesses:0,sound:true,bonus:0};
  const saveFun=()=>{try{localStorage.setItem(KEY,JSON.stringify(FUN))}catch(e){}};
- const loadFun=()=>{try{Object.assign(FUN,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}; FUN.bonus=Number(FUN.bonus)||0;};
+ const loadFun=()=>{try{Object.assign(FUN,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){}; FUN.bonus=Math.max(0,Number(FUN.bonus)||0);};
 
  /* ---------- 보너스 집계와 손익 표시 ----------
-    보너스(돌림판 현금·무료 주식, 미션·예측 보상)는 투자 손익에서 제외해 따로 보여줍니다. */
+    보너스(돌림판 현금·무료 주식, 미션·예측 보상)는 투자 손익에서 제외합니다.
+    세금 같은 손해는 보너스에서 빼지 않고 그대로 손익에 반영합니다. */
  const costTotal=()=>Object.values(holdings).reduce((a,h)=>a+(h.cost||0),0);
- const addBonus=n=>{FUN.bonus+=n;saveFun();};
+ const addBonus=n=>{if(n>0){FUN.bonus+=n;saveFun();}};
  const sgnWon=n=>(n>0?"+":n<0?"-":"")+"₩"+Math.abs(Math.round(n)).toLocaleString("ko-KR");
 
  function showProfit(){
@@ -184,7 +185,7 @@
  const _renderStats=renderStats;
  renderStats=function(){_renderStats();showProfit();};
 
- /* 돌림판 결과가 현금(또는 무료 주식 매입가)을 늘리거나 줄이면 그만큼 보너스로 기록 */
+ /* 돌림판 결과로 늘어난 현금이나 무료 주식 매입가만 보너스로 기록 (세금처럼 줄어든 것은 손익에 그대로 반영) */
  const _finishSpin=finishSpin;
  finishSpin=function(idx){
   const c0=cash,k0=costTotal();
