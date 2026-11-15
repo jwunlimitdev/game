@@ -7,6 +7,8 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b1f2a;color:#f2f2f2;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:20px}
+body.shake{animation:shake .45s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
 h1{margin:8px 0 12px;font-size:24px}
 .wallet{display:flex;align-items:center;gap:12px;background:#2a3150;border-radius:14px;padding:12px 16px;width:100%;max-width:520px;justify-content:space-between}
 .wallet strong{font-size:20px;color:#facc15}
@@ -35,13 +37,15 @@ h1{margin:8px 0 12px;font-size:24px}
 .result{font-size:18px;margin-top:12px;min-height:28px;font-weight:700}
 .info{color:#b9bfd6;font-size:13px;line-height:1.6}
 .scratch-wrap{position:relative;width:300px;height:140px;margin:16px auto;border-radius:12px;overflow:hidden;background:#fff;color:#222;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:pointer}
+canvas.scratch{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:pointer}
 .msg{min-height:28px;font-size:18px;font-weight:700;margin:10px 0}
 .toast{min-height:22px;color:#facc15;font-size:14px;font-weight:700;margin:6px 0}
 .bankrupt{color:#fca5a5;font-size:14px;min-height:20px;margin:6px 0}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
 </style>
 </head>
 <body>
+<canvas id="fx"></canvas>
 <h1>🎱 로또 게임</h1>
 
 <div class="wallet">
@@ -63,7 +67,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor
 
 <div id="pick" class="panel active">
   <p class="info" id="pickInfo"></p>
-  <p class="info">1장 1,000원 · 1등 1억 / 2등 500만 / 3등 150만 / 4등 5만 / 5등 5천</p>
+  <p class="info">1장 1,000원 · 4등 이상 당첨 확률 약 0.14%<br>1등 1억 / 2등 500만 / 3등 150만 / 4등 5만</p>
   <div class="grid" id="grid"></div>
   <div class="row">
     <button class="btn" id="autoBtn">자동 선택</button>
@@ -77,8 +81,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor
 <div id="scratchPanel" class="panel">
   <p class="info">첫 복권(행운 복권)은 무료예요. 종류를 고른 뒤 다음 복권을 구매하세요.</p>
   <div class="row" id="typeRow"></div>
+  <p class="info" id="oddsInfo"></p>
   <div class="scratch-wrap">
-    <canvas id="scratchCanvas" width="600" height="280"></canvas>
+    <canvas class="scratch" id="scratchCanvas" width="600" height="280"></canvas>
   </div>
   <div class="msg" id="scratchMsg"></div>
   <button class="btn" id="newTicket"></button>
@@ -95,30 +100,102 @@ function shuffle(arr){
   }
   return arr;
 }
+const pickOne = arr => arr[Math.floor(Math.random() * arr.length)];
+
+/* 효과: 사운드, 흔들림, 컨페티 */
+let actx = null;
+function beep(freq = 660, dur = 0.15, type = 'square'){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = 0.05;
+    o.connect(g);
+    g.connect(actx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+    o.stop(actx.currentTime + dur);
+  }catch(e){}
+}
+function shakeScreen(){
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('shake');
+}
+function confetti(power){
+  const c = $('#fx');
+  c.width = innerWidth;
+  c.height = innerHeight;
+  const g = c.getContext('2d');
+  const ps = Array.from({length: power}, () => ({
+    x: innerWidth / 2,
+    y: innerHeight / 2,
+    vx: (Math.random() - 0.5) * 18,
+    vy: -Math.random() * 18 - 4,
+    s: Math.random() * 8 + 4,
+    col: `hsl(${Math.random() * 360},90%,60%)`,
+    life: 120
+  }));
+  function step(){
+    g.clearRect(0, 0, c.width, c.height);
+    let alive = false;
+    for(const p of ps){
+      if(p.life <= 0) continue;
+      alive = true;
+      p.vy += 0.4;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+      g.globalAlpha = Math.max(p.life / 120, 0);
+      g.fillStyle = p.col;
+      g.fillRect(p.x, p.y, p.s, p.s);
+    }
+    g.globalAlpha = 1;
+    if(alive) requestAnimationFrame(step);
+    else g.clearRect(0, 0, c.width, c.height);
+  }
+  step();
+}
+function celebrate(prize){
+  if(prize >= 1000000){
+    confetti(180);
+    shakeScreen();
+    [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.2, 'triangle'), i * 140));
+  } else if(prize > 0){
+    confetti(70);
+    beep(880, 0.2, 'triangle');
+  } else {
+    beep(180, 0.25, 'sawtooth');
+  }
+}
 
 const START = 1000000;
 const COST = 1000;
-const LOTTO_PRIZE = {1: 100000000, 2: 5000000, 3: 1500000, 4: 50000, 5: 5000};
+const LOTTO_PRIZE = {1: 100000000, 2: 5000000, 3: 1500000, 4: 50000};
 
+/* 가중치 합 10000 기준. 0원 가중치가 대부분 */
 const TICKETS = [
   {id: 'basic', name: '행운 복권', cost: 1000, color: '#b8bcc6', text: '#6b6f7a', prizes: [
-    {v: 0, w: 60}, {v: 1000, w: 25}, {v: 5000, w: 10}, {v: 50000, w: 4}, {v: 1000000, w: 1}
+    {v: 0, w: 9400}, {v: 1000, w: 400}, {v: 5000, w: 150}, {v: 50000, w: 45}, {v: 1000000, w: 5}
   ]},
   {id: 'gold', name: '황금 복권', cost: 5000, color: '#d4af37', text: '#5c4a10', prizes: [
-    {v: 0, w: 55}, {v: 5000, w: 25}, {v: 20000, w: 12}, {v: 100000, w: 6}, {v: 5000000, w: 2}
+    {v: 0, w: 9605}, {v: 5000, w: 250}, {v: 20000, w: 100}, {v: 100000, w: 40}, {v: 5000000, w: 5}
   ]},
   {id: 'diamond', name: '다이아 복권', cost: 10000, color: '#9bd7f5', text: '#1e4a63', prizes: [
-    {v: 0, w: 50}, {v: 10000, w: 25}, {v: 50000, w: 15}, {v: 300000, w: 7}, {v: 10000000, w: 3}
+    {v: 0, w: 9706}, {v: 10000, w: 150}, {v: 50000, w: 100}, {v: 300000, w: 40}, {v: 10000000, w: 4}
   ]}
 ];
 const ticketById = id => TICKETS.find(t => t.id === id);
+const LOSE_LINES = ['다음엔 될 거예요!', '아깝다… 한 번 더!', '행운이 곧 올 거예요', '꽝도 복권의 맛!'];
 
 const hit = (s, n) => s.bestRank > 0 && s.bestRank <= n;
 const MISSIONS = [
   {id: 'm1', title: '첫 추첨 해보기', reward: 10000, ok: s => s.draws >= 1},
   {id: 'm2', title: '복권 1장 긁기', reward: 10000, ok: s => s.scratches >= 1},
   {id: 'm3', title: '추첨 10회 달성', reward: 30000, ok: s => s.draws >= 10},
-  {id: 'm4', title: '로또 5등 이상 당첨', reward: 20000, ok: s => hit(s, 5)},
+  {id: 'm4', title: '로또 4등 당첨', reward: 20000, ok: s => hit(s, 4)},
   {id: 'm5', title: '로또 3등 이상 당첨', reward: 300000, ok: s => hit(s, 3)},
   {id: 'm6', title: '로또 2등 이상 당첨', reward: 1000000, ok: s => hit(s, 2)},
   {id: 'm7', title: '로또 1등 당첨', reward: 10000000, ok: s => hit(s, 1)},
@@ -160,7 +237,11 @@ function afterAction(extra){
   const got = checkMissions();
   const parts = [];
   if(extra) parts.push(extra);
-  if(got.length) parts.push('🎯 미션 완료! ' + got.map(m => `${m.title} +${won(m.reward)}`).join(', '));
+  if(got.length){
+    parts.push('🎯 미션 완료! ' + got.map(m => `${m.title} +${won(m.reward)}`).join(', '));
+    confetti(90);
+    beep(1046, 0.25, 'triangle');
+  }
   $('#toast').textContent = parts.join('  ');
   render();
 }
@@ -213,12 +294,12 @@ function makeBall(n, bonus){
   d.textContent = n;
   return d;
 }
+/* 5개 일치는 3등 이하로 취급하지 않고 꽝 처리(확률 낮춤) */
 function rankOf(matched, bonusHit){
   if(matched === 6) return 1;
   if(matched === 5 && bonusHit) return 2;
   if(matched === 5) return 3;
   if(matched === 4) return 4;
-  if(matched === 3) return 5;
   return 0;
 }
 async function draw(){
@@ -237,6 +318,7 @@ async function draw(){
   for(const n of win){
     await sleep(500);
     balls.appendChild(makeBall(n, false));
+    beep(440 + n * 6, 0.08, 'sine');
   }
   await sleep(700);
   balls.appendChild(makeBall(bonus, true));
@@ -249,6 +331,7 @@ async function draw(){
 
   const label = r ? `${r}등 당첨! 일치 ${matched}개${r === 2 ? ' + 보너스' : ''}` : `꽝… 일치 ${matched}개`;
   $('#result').textContent = label + (prize ? `  +${won(prize)}` : '');
+  celebrate(prize);
   drawing = false;
   afterAction();
 }
@@ -315,7 +398,10 @@ function checkScratch(){
     S.money += cardPrize;
     S.scratches++;
     S.byType[card.id]++;
-    $('#scratchMsg').textContent = cardPrize ? `🎉 ${card.name} ${won(cardPrize)} 당첨!` : `아쉽지만 ${card.name}은 꽝입니다`;
+    $('#scratchMsg').textContent = cardPrize
+      ? `🎉 ${card.name} ${won(cardPrize)} 당첨!`
+      : `${pickOne(LOSE_LINES)}`;
+    celebrate(cardPrize);
     afterAction();
   }
 }
@@ -368,6 +454,8 @@ function render(){
   $('#drawBtn').disabled = picks.size !== 6 || drawing || broke;
   renderTypes();
   const t = ticketById(selType);
+  const winPct = ((10000 - t.prizes[0].w) / 100).toFixed(1);
+  $('#oddsInfo').textContent = `${t.name} 당첨 확률 약 ${winPct}% · 최고 ${won(Math.max(...t.prizes.map(p => p.v)))}`;
   $('#newTicket').textContent = `${t.name} 구매 (${won(t.cost)})`;
   $('#newTicket').disabled = pending || S.money < t.cost;
 }
