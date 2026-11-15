@@ -14,6 +14,7 @@
   <span>코인 <b id="coins">0</b></span>
   <span>점수 <b id="score">0</b></span>
   <span>획득 <b id="prizes">0</b></span>
+  <span>보관 <b id="invCount">0</b></span>
   <span>도감 <b id="dexCount">0</b>/20</span>
 </div>
 <canvas id="c" width="480" height="640"></canvas>
@@ -26,14 +27,20 @@
 <div class="tabs">
   <button class="panel" id="toggleDex">📖 도감 열기</button>
   <button class="panel" id="toggleMission">🎯 미션 열기</button>
+  <button class="panel" id="toggleInv">🎒 보관함 열기</button>
 </div>
 <div id="dex" class="panel-box" hidden>
   <h2>📖 인형 도감</h2>
   <div id="dexGrid"></div>
 </div>
 <div id="mission" class="panel-box" hidden>
-  <h2>🎯 미션 (클리어 시 코인 보상)</h2>
+  <h2>🎯 미션 <span id="missionCount"></span> <small>(클리어 시 코인 보상)</small></h2>
   <div id="missionList"></div>
+</div>
+<div id="inv" class="panel-box" hidden>
+  <h2>🎒 보관함</h2>
+  <div class="invInfo" id="invInfo"></div>
+  <div id="invList"></div>
 </div>
 
 <script src="shops.js"></script>
