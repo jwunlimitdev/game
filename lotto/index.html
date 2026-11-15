@@ -69,11 +69,11 @@ canvas.scratch{position:absolute;inset:0;width:100%;height:100%;touch-action:non
 
 <div id="pick" class="panel active">
   <p class="info" id="pickInfo"></p>
-  <p class="info">1장 1,000원 · 2개 이상 맞으면 당첨 (약 17.5%)</p>
+  <p class="info">1장 1,000원 · 2개 이상 맞으면 당첨 (약 59.7%)</p>
   <div class="odds">
-    1등 28억 (약 0.00001%) · 2등 500만 (약 0.00007%)<br>
-    3등 150만 (약 0.003%) · 4등 5만 (약 0.14%)<br>
-    5등 3만 (약 2.2%) · 6등 5천 (약 15.1%)
+    1등 28억 (확률 0.2%) · 2등 500만 (확률 1%)<br>
+    3등 150만 (확률 1.5%) · 4등 5만 (확률 12%)<br>
+    5등 3만 (확률 20%) · 6등 5천 (확률 25%)
   </div>
   <div class="grid" id="grid"></div>
   <div class="row">
@@ -193,6 +193,13 @@ const START = 1000000;
 const COST = 1000;
 /* 로또 등수별 상금 (2개 이상 일치 시 당첨) */
 const LOTTO_PRIZE = {1: 2800000000, 2: 5000000, 3: 1500000, 4: 50000, 5: 30000, 6: 5000};
+/* 등수별 확률 (가중치 합 10000 = 100%). 0은 꽝 */
+const LOTTO_ODDS = [
+  {r: 1, w: 20}, {r: 2, w: 100}, {r: 3, w: 150},
+  {r: 4, w: 1200}, {r: 5, w: 2000}, {r: 6, w: 2500}, {r: 0, w: 4030}
+];
+/* 등수별 일치 개수 */
+const MATCH_OF = {1: 6, 2: 5, 3: 5, 4: 4, 5: 3, 6: 2, 0: 0};
 
 /* 가중치 합 10000 기준. 0원 가중치 이외가 당첨 */
 const TICKETS = [
@@ -336,6 +343,27 @@ function rankOf(matched, bonusHit){
   if(matched === 2) return 6;
   return 0;
 }
+/* 확률표에서 먼저 등수를 정함 */
+function pickRank(){
+  const total = LOTTO_ODDS.reduce((s, x) => s + x.w, 0);
+  let r = Math.random() * total;
+  for(const x of LOTTO_ODDS){
+    if((r -= x.w) < 0) return x.r;
+  }
+  return 0;
+}
+/* 정해진 등수에 맞게 당첨 번호와 보너스 번호를 만듦 */
+function buildDraw(rank){
+  const P = shuffle([...picks]);
+  const Q = shuffle(Array.from({length: 45}, (_, i) => i + 1).filter(n => !picks.has(n)));
+  const m = MATCH_OF[rank];
+  const win = P.slice(0, m).concat(Q.slice(0, 6 - m));
+  let bonus;
+  if(rank === 2) bonus = P[5];
+  else if(rank === 1) bonus = Q[0];
+  else bonus = Q[6 - m];
+  return {win: shuffle(win), bonus};
+}
 async function draw(){
   if(picks.size !== 6 || drawing || S.money < COST) return;
   drawing = true;
@@ -346,9 +374,7 @@ async function draw(){
   balls.innerHTML = '';
   $('#result').textContent = '추첨 중...';
 
-  const pool = shuffle(Array.from({length: 45}, (_, i) => i + 1));
-  const win = pool.slice(0, 6);
-  const bonus = pool[6];
+  const {win, bonus} = buildDraw(pickRank());
   for(const n of win){
     await sleep(500);
     balls.appendChild(makeBall(n, false));
