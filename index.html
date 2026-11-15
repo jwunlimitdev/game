@@ -82,6 +82,9 @@
     .learning .card-glow { background: #58d68d; }
     .kaka .card-glow { background: #fb7185; }
     .stock .card-glow { background: #35d39a; }
+    .independence .card-glow { background: #f59e0b; }
+    .minitactics .card-glow { background: #a78bfa; }
+    .territorywar .card-glow { background: #f87171; }
     .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .game-icon { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; font-size: 29px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); }
     .tag { padding: 6px 9px; border-radius: 999px; color: #c5d7ff; background: rgba(112,165,255,.13); font-size: 10px; font-weight: 800; }
@@ -133,7 +136,7 @@
         <a class="primary" href="#games">게임 둘러보기&nbsp; ↓</a>
       </div>
       <div class="stats" aria-label="게임 통계">
-        <div class="stat"><strong>04</strong><span>등록된 게임</span></div>
+        <div class="stat"><strong>07</strong><span>등록된 게임</span></div>
         <div class="stat"><strong>01</strong><span>게임 허브</span></div>
         <div class="stat"><strong>∞</strong><span>새로운 가능성</span></div>
       </div>
@@ -143,7 +146,7 @@
   <main class="wrap" id="games">
     <div class="section-top">
       <div><div class="section-kicker">GAME LIBRARY</div><h2>게임 라이브러리</h2></div>
-      <div class="section-note">현재 등록된 게임 4개</div>
+      <div class="section-note">현재 등록된 게임 7개</div>
     </div>
     <div class="toolbar">
       <input class="search" id="gameSearch" type="search" placeholder="게임 이름 검색..." aria-label="게임 이름 검색">
@@ -152,6 +155,7 @@
         <button class="filter" type="button" data-filter="arcade" aria-pressed="false">아케이드</button>
         <button class="filter" type="button" data-filter="education" aria-pressed="false">교육</button>
         <button class="filter" type="button" data-filter="action" aria-pressed="false">액션</button>
+        <button class="filter" type="button" data-filter="strategy" aria-pressed="false">전략</button>
       </div>
     </div>
 
@@ -186,6 +190,30 @@
         <h3>REWUNG 모의 주식</h3>
         <p>가상 자금으로 국내·해외 주식을 사고팔며 투자 감각을 키우는 주식 시뮬레이터. 돌림판과 업적도 있어요.</p>
         <div class="card-bottom"><span class="launch">게임 시작 <span>→</span></span><span class="section-note">04</span></div>
+      </a>
+
+      <a class="game-card independence" href="./independence/" data-category="action" data-name="7월 4일의 반격 독립 전투 전략">
+        <span class="card-glow"></span>
+        <div class="card-head"><span class="game-icon">🗽</span><span class="tag">ACTION</span></div>
+        <h3>7월 4일의 반격</h3>
+        <p>역사적 독립 전투를 배경으로 펼쳐지는 전략 액션 게임. 전장을 돌파하고 승리를 노려보세요.</p>
+        <div class="card-bottom"><span class="launch">게임 시작 <span>→</span></span><span class="section-note">05</span></div>
+      </a>
+
+      <a class="game-card minitactics" href="./minitactics/" data-category="strategy" data-name="전략전투 미니 택틱스 전술">
+        <span class="card-glow"></span>
+        <div class="card-head"><span class="game-icon">⚔️</span><span class="tag">STRATEGY</span></div>
+        <h3>전략전투</h3>
+        <p>유닛과 전술을 활용해 승리를 거두는 턴제 전략 전투 게임.</p>
+        <div class="card-bottom"><span class="launch">게임 시작 <span>→</span></span><span class="section-note">06</span></div>
+      </a>
+
+      <a class="game-card territorywar" href="./territorywar/" data-category="strategy" data-name="영토 전쟁 게임 돌격 영토 점령 전략">
+        <span class="card-glow"></span>
+        <div class="card-head"><span class="game-icon">🏰</span><span class="tag">STRATEGY</span></div>
+        <h3>영토 전쟁 게임 - 돌격</h3>
+        <p>영토를 차지하고 전선을 넓혀가는 전략 게임. 상황에 맞는 선택으로 승리를 이끌어 보세요.</p>
+        <div class="card-bottom"><span class="launch">게임 시작 <span>→</span></span><span class="section-note">07</span></div>
       </a>
     </div>
     <div class="empty" id="emptyState">검색 결과가 없어요. 다른 이름이나 카테고리를 선택해 보세요.</div>
