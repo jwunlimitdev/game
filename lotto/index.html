@@ -68,7 +68,7 @@ canvas.scratch{position:absolute;inset:0;width:100%;height:100%;touch-action:non
 
 <div id="pick" class="panel active">
   <p class="info" id="pickInfo"></p>
-  <p class="info">1장 1,000원 · 4등 이상 당첨 확률 약 0.14%<br>1등 1억 / 2등 500만 / 3등 150만 / 4등 5만</p>
+  <p class="info">1장 1,000원 · 2개 이상 맞으면 당첨 (약 17.5%)<br>1등 1억 / 2등 500만 / 3등 150만 / 4등 5만 / 5등 3만 / 6등 5천</p>
   <div class="grid" id="grid"></div>
   <div class="row">
     <button class="btn" id="autoBtn">자동 선택</button>
@@ -185,7 +185,8 @@ function celebrate(prize){
 
 const START = 1000000;
 const COST = 1000;
-const LOTTO_PRIZE = {1: 100000000, 2: 5000000, 3: 1500000, 4: 50000};
+/* 로또 등수별 상금 (2개 이상 일치 시 당첨) */
+const LOTTO_PRIZE = {1: 100000000, 2: 5000000, 3: 1500000, 4: 50000, 5: 30000, 6: 5000};
 
 /* 가중치 합 10000 기준. 0원 가중치 이외가 당첨 */
 const TICKETS = [
@@ -319,11 +320,14 @@ function makeBall(n, bonus){
   d.textContent = n;
   return d;
 }
+/* 등수 판정: 6개 일치=1등, 5개+보너스=2등, 5개=3등, 4개=4등, 3개=5등, 2개=6등 */
 function rankOf(matched, bonusHit){
   if(matched === 6) return 1;
   if(matched === 5 && bonusHit) return 2;
   if(matched === 5) return 3;
   if(matched === 4) return 4;
+  if(matched === 3) return 5;
+  if(matched === 2) return 6;
   return 0;
 }
 async function draw(){
