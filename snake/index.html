@@ -29,7 +29,7 @@ button{padding:12px 28px;font-size:16px;border:0;border-radius:8px;background:#2
 
 <script>
 const N = 20, CELL = 400 / N, TICK = 180;
-const HELP = '스와이프 또는 방향키로 이동 · ⚡번개 🛡방패 🧲자석';
+const HELP = '스와이프 또는 방향키로 이동 · 벽을 넘으면 반대편으로 · ⚡번개 🛡방패 🧲자석';
 const ITEMS = { bolt: '⚡', shield: '🛡', magnet: '🧲' };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 const OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
@@ -40,6 +40,7 @@ const ctx = cv.getContext('2d');
 const $ = id => document.getElementById(id);
 const key = (x, y) => x + ',' + y;
 const rnd = n => Math.floor(Math.random() * n);
+const wrap = v => ((v % N) + N) % N;
 
 let best = 0;
 try { best = +localStorage.getItem('snakeDefenseBest') || 0; } catch (e) {}
@@ -179,7 +180,8 @@ function tick() {
 
   const [dx, dy] = DIRS[S.dir];
   const hd = S.snake[0];
-  const nx = hd.x + dx, ny = hd.y + dy;
+  // 벽을 넘으면 반대편으로 이동
+  const nx = wrap(hd.x + dx), ny = wrap(hd.y + dy);
 
   if (S.enemies.some(e => e.x === hd.x && e.y === hd.y)) {
     if (!blockedByShield()) return gameOver();
@@ -187,11 +189,10 @@ function tick() {
 
   const eating = S.food && nx === S.food.x && ny === S.food.y;
   const body = eating ? S.snake : S.snake.slice(0, -1);
-  const hitWall = nx < 0 || ny < 0 || nx >= N || ny >= N;
   const hitObs = S.obstacles.has(key(nx, ny));
   const hitBody = body.some(s => s.x === nx && s.y === ny);
   const hitEnemy = S.enemies.some(e => e.x === nx && e.y === ny);
-  if (hitWall || hitObs || hitBody || hitEnemy) {
+  if (hitObs || hitBody || hitEnemy) {
     if (!blockedByShield()) return gameOver();
     return;
   }
@@ -222,12 +223,17 @@ function tick() {
 
 /* ---------- 렌더링 ---------- */
 
-// 이동 사이 보간: 칸 단위 이동을 부드럽게 이어 붙인다
+// 이동 사이 보간: 칸 단위 이동을 부드럽게 이어 붙인다 (벽을 넘는 순간은 보간하지 않음)
 function snakePoints(t) {
   return S.snake.map((s, i) => {
     const f = S.prev[Math.min(i, S.prev.length - 1)] || s;
-    const x = f.x + (s.x - f.x) * t;
-    const y = f.y + (s.y - f.y) * t;
+    let x = f.x, y = f.y;
+    if (Math.abs(s.x - f.x) <= 1 && Math.abs(s.y - f.y) <= 1) {
+      x = f.x + (s.x - f.x) * t;
+      y = f.y + (s.y - f.y) * t;
+    } else {
+      x = s.x; y = s.y;
+    }
     return { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2 };
   });
 }
