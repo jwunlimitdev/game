@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>스네이크 디펜스</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none}
+body{background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:10px}
+#hud{display:flex;gap:16px;margin:8px 0;font-size:15px;flex-wrap:wrap;justify-content:center}
+#hud b{color:#facc15}
+canvas{background:#1e293b;border-radius:10px;width:min(94vw,520px);height:auto;touch-action:none}
+#msg{margin-top:8px;font-size:14px;min-height:20px;color:#94a3b8;text-align:center}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:18px}
+#overlay.show{display:flex}
+button{padding:12px 28px;font-size:16px;border:0;border-radius:8px;background:#22c55e;color:#052e16;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="hud">
+  <span>스테이지 <b id="stage">1</b></span>
+  <span>먹이 <b id="eaten">0</b>/<b id="target">5</b></span>
+  <span>점수 <b id="score">0</b></span>
+  <span>최고 <b id="best">0</b></span>
+</div>
+<canvas id="c" width="400" height="400"></canvas>
+<div id="msg"></div>
+<div id="overlay"><div id="over-text"></div><button id="restart">다시 시작</button></div>
+
+<script>
+const N = 20, CELL = 400 / N, TICK = 140;
+const HELP = '스와이프 또는 방향키로 이동 · ⚡번개 🛡방패 🧲자석';
+const ITEMS = { bolt: '⚡', shield: '🛡', magnet: '🧲' };
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
+const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+const key = (x, y) => x + ',' + y;
+const rnd = n => Math.floor(Math.random() * n);
+
+let best = 0;
+try { best = +localStorage.getItem('snakeDefenseBest') || 0; } catch (e) {}
+$('best').textContent = best;
+
+let S;
+
+function init() {
+  S = {
+    snake: [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }],
+    dir: 'right', queue: [], food: null, items: [], obstacles: new Set(), enemies: [],
+    stage: 1, eaten: 0, target: 5, score: 0, ticks: 0,
+    shield: false, boltUntil: 0, magnetUntil: 0, over: false
+  };
+  makeStage();
+  placeFood();
+  $('overlay').classList.remove('show');
+  msg(HELP);
+}
+
+function nearHead(x, y) {
+  const h = S.snake[0];
+  return Math.abs(x - h.x) + Math.abs(y - h.y) < 4;
+}
+
+function occupied(x, y) {
+  return S.snake.some(s => s.x === x && s.y === y) ||
+    S.obstacles.has(key(x, y)) ||
+    (S.food && S.food.x === x && S.food.y === y) ||
+    S.items.some(i => i.x === x && i.y === y) ||
+    S.enemies.some(e => e.x === x && e.y === y);
+}
+
+function freeCell() {
+  let x, y, t = 0;
+  do { x = rnd(N); y = rnd(N); t++; } while ((occupied(x, y) || nearHead(x, y)) && t < 500);
+  return { x, y };
+}
+
+function makeStage() {
+  S.obstacles = new Set();
+  const n = Math.min(3 + S.stage * 2, 18);
+  for (let i = 0; i < n; i++) { const p = freeCell(); S.obstacles.add(key(p.x, p.y)); }
+  S.enemies = [];
+  const ne = Math.min(S.stage, 5);
+  for (let i = 0; i < ne; i++) { const p = freeCell(); S.enemies.push(p); }
+  S.target = 5 + (S.stage - 1) * 3;
+  S.eaten = 0;
+}
+
+function placeFood() { S.food = freeCell(); }
+
+function spawnItem() {
+  if (S.items.length >= 2) return;
+  const p = freeCell();
+  const types = Object.keys(ITEMS);
+  S.items.push({ x: p.x, y: p.y, t: types[rnd(types.length)] });
+}
+
+function nextStage() {
+  S.stage++;
+  makeStage();
+  placeFood();
+  msg('🎉 스테이지 ' + S.stage + ' 시작!');
+}
+
+function moveEnemies() {
+  S.enemies.forEach(e => {
+    const h = S.snake[0];
+    const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+      .map(([a, b]) => ({ x: e.x + a, y: e.y + b }))
+      .filter(p => p.x >= 0 && p.y >= 0 && p.x < N && p.y < N &&
+        !S.obstacles.has(key(p.x, p.y)) &&
+        !S.enemies.some(o => o !== e && o.x === p.x && o.y === p.y));
+    if (!opts.length) return;
+    const dist = p => Math.abs(p.x - h.x) + Math.abs(p.y - h.y);
+    opts.sort((a, b) => dist(a) - dist(b));
+    const p = Math.random() < 0.6 ? opts[0] : opts[rnd(opts.length)];
+    e.x = p.x; e.y = p.y;
+  });
+}
+
+function pullFood(now) {
+  if (now >= S.magnetUntil || !S.food) return;
+  const hd = S.snake[0], f = S.food;
+  if (Math.abs(f.x - hd.x) + Math.abs(f.y - hd.y) > 5) return;
+  let nx = f.x, ny = f.y;
+  if (Math.abs(f.x - hd.x) > Math.abs(f.y - hd.y)) nx += Math.sign(hd.x - f.x);
+  else ny += Math.sign(hd.y - f.y);
+  if (nx < 0 || ny < 0 || nx >= N || ny >= N) return;
+  if (S.obstacles.has(key(nx, ny)) || S.snake.some(s => s.x === nx && s.y === ny)) return;
+  S.food = { x: nx, y: ny };
+}
+
+function turn(d) {
+  const last = S.queue.length ? S.queue[S.queue.length - 1] : S.dir;
+  if (d !== last && d !== OPP[last]) S.queue.push(d);
+  if (S.queue.length > 3) S.queue.shift();
+}
+
+function msg(t) { $('msg').textContent = t; }
+let msgTimer;
+function flash(t) {
+  msg(t);
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => msg(HELP), 1500);
+}
+
+function gameOver() {
+  S.over = true;
+  if (S.score > best) {
+    best = S.score;
+    try { localStorage.setItem('snakeDefenseBest', best); } catch (e) {}
+  }
+  $('over-text').textContent = '게임 오버! 점수 ' + S.score + ' · 스테이지 ' + S.stage;
+  $('overlay').classList.add('show');
+}
+
+// 방패 소모 처리: true면 충돌을 막음
+function blockedByShield() {
+  if (!S.shield) return false;
+  S.shield = false;
+  flash('🛡 방패가 막았어요!');
+  return true;
+}
+
+function tick() {
+  if (S.over) return;
+  S.ticks++;
+  const now = Date.now();
+  if (S.queue.length) S.dir = S.queue.shift();
+  if (S.ticks % 7 === 0) S.score += 1 * S.stage;
+  if (S.ticks % 25 === 0) spawnItem();
+  if (now >= S.boltUntil && S.ticks % 2 === 0) moveEnemies();
+
+  const [dx, dy] = DIRS[S.dir];
+  const hd = S.snake[0];
+  const nx = hd.x + dx, ny = hd.y + dy;
+
+  // 적이 머리에 닿은 경우
+  if (S.enemies.some(e => e.x === hd.x && e.y === hd.y)) {
+    if (!blockedByShield()) return gameOver();
+  }
+
+  const eating = S.food && nx === S.food.x && ny === S.food.y;
+  const body = eating ? S.snake : S.snake.slice(0, -1);
+  const hitWall = nx < 0 || ny < 0 || nx >= N || ny >= N;
+  const hitObs = S.obstacles.has(key(nx, ny));
+  const hitBody = body.some(s => s.x === nx && s.y === ny);
+  const hitEnemy = S.enemies.some(e => e.x === nx && e.y === ny);
+  if (hitWall || hitObs || hitBody || hitEnemy) {
+    if (!blockedByShield()) return gameOver();
+    render();
+    return;
+  }
+
+  S.snake.unshift({ x: nx, y: ny });
+  if (eating) {
+    S.eaten++;
+    S.score += 10 * S.stage;
+    S.food = null;
+    if (S.eaten >= S.target) nextStage();
+    else placeFood();
+  } else {
+    S.snake.pop();
+  }
+
+  const idx = S.items.findIndex(i => i.x === nx && i.y === ny);
+  if (idx >= 0) {
+    const t = S.items[idx].t;
+    S.items.splice(idx, 1);
+    if (t === 'bolt') S.boltUntil = now + 4000;
+    if (t === 'shield') S.shield = true;
+    if (t === 'magnet') S.magnetUntil = now + 5000;
+    flash(ITEMS[t] + (t === 'bolt' ? ' 번개! 적 정지' : t === 'shield' ? ' 방패 획득' : ' 자석 발동'));
+  }
+
+  pullFood(now);
+}
+
+function text(t, x, y) {
+  ctx.fillText(t, x * CELL + CELL / 2, y * CELL + CELL / 2);
+}
+
+function render() {
+  ctx.clearRect(0, 0, 400, 400);
+  if (Date.now() < S.boltUntil) {
+    ctx.fillStyle = 'rgba(250,204,21,.12)';
+    ctx.fillRect(0, 0, 400, 400);
+  }
+  ctx.fillStyle = '#475569';
+  S.obstacles.forEach(k => {
+    const [x, y] = k.split(',').map(Number);
+    ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
+  });
+
+  ctx.font = (CELL * 0.8) + 'px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  if (S.food) text('🍎', S.food.x, S.food.y);
+  S.items.forEach(i => text(ITEMS[i.t], i.x, i.y));
+  S.enemies.forEach(e => text('🐭', e.x, e.y));
+
+  S.snake.forEach((s, i) => {
+    ctx.fillStyle = i === 0 ? '#4ade80' : '#16a34a';
+    ctx.fillRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2);
+  });
+  if (S.shield) {
+    const h = S.snake[0];
+    ctx.strokeStyle = '#60a5fa';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(h.x * CELL + 2, h.y * CELL + 2, CELL - 4, CELL - 4);
+  }
+
+  $('stage').textContent = S.stage;
+  $('eaten').textContent = S.eaten;
+  $('target').textContent = S.target;
+  $('score').textContent = S.score;
+}
+
+// 입력: 방향키/WASD
+addEventListener('keydown', e => {
+  if (KEYS[e.key]) { turn(KEYS[e.key]); e.preventDefault(); }
+});
+
+// 입력: 스와이프
+let sx = 0, sy = 0;
+cv.addEventListener('touchstart', e => {
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+}, { passive: true });
+cv.addEventListener('touchend', e => {
+  const t = e.changedTouches[0];
+  const dx = t.clientX - sx, dy = t.clientY - sy;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+  if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 'right' : 'left');
+  else turn(dy > 0 ? 'down' : 'up');
+});
+
+$('restart').onclick = () => { init(); render(); };
+
+init();
+render();
+setInterval(() => { tick(); render(); }, TICK);
+</script>
+</body>
+</html>
