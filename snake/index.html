@@ -48,8 +48,9 @@ $('best').textContent = best;
 let S;
 
 function init() {
+  const start = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
   S = {
-    snake: [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }],
+    snake: start, prev: start.map(p => ({ ...p })), tickAt: performance.now(),
     dir: 'right', queue: [], food: null, items: [], obstacles: new Set(), enemies: [],
     stage: 1, eaten: 0, target: 5, score: 0, ticks: 0,
     shield: false, boltUntil: 0, magnetUntil: 0, over: false
@@ -103,7 +104,7 @@ function nextStage() {
   S.stage++;
   makeStage();
   placeFood();
-  msg('🎉 스테이지 ' + S.stage + ' 시작!');
+  flash('🎉 스테이지 ' + S.stage + ' 시작!');
 }
 
 function moveEnemies() {
@@ -158,7 +159,6 @@ function gameOver() {
   $('overlay').classList.add('show');
 }
 
-// 방패 소모 처리: true면 충돌을 막음
 function blockedByShield() {
   if (!S.shield) return false;
   S.shield = false;
@@ -169,6 +169,8 @@ function blockedByShield() {
 function tick() {
   if (S.over) return;
   S.ticks++;
+  S.prev = S.snake.map(p => ({ x: p.x, y: p.y }));
+  S.tickAt = performance.now();
   const now = Date.now();
   if (S.queue.length) S.dir = S.queue.shift();
   if (S.ticks % 7 === 0) S.score += 1 * S.stage;
@@ -179,7 +181,6 @@ function tick() {
   const hd = S.snake[0];
   const nx = hd.x + dx, ny = hd.y + dy;
 
-  // 적이 머리에 닿은 경우
   if (S.enemies.some(e => e.x === hd.x && e.y === hd.y)) {
     if (!blockedByShield()) return gameOver();
   }
@@ -192,7 +193,6 @@ function tick() {
   const hitEnemy = S.enemies.some(e => e.x === nx && e.y === ny);
   if (hitWall || hitObs || hitBody || hitEnemy) {
     if (!blockedByShield()) return gameOver();
-    render();
     return;
   }
 
@@ -220,11 +220,168 @@ function tick() {
   pullFood(now);
 }
 
+/* ---------- 렌더링 ---------- */
+
+// 이동 사이 보간: 칸 단위 이동을 부드럽게 이어 붙인다
+function snakePoints(t) {
+  return S.snake.map((s, i) => {
+    const f = S.prev[Math.min(i, S.prev.length - 1)] || s;
+    const x = f.x + (s.x - f.x) * t;
+    const y = f.y + (s.y - f.y) * t;
+    return { x: x * CELL + CELL / 2, y: y * CELL + CELL / 2 };
+  });
+}
+
+// 머리에서 꼬리로 갈수록 가늘어짐
+function widthAt(i, n) {
+  const k = n <= 1 ? 0 : i / (n - 1);
+  return CELL * (0.92 - 0.6 * Math.pow(k, 0.8));
+}
+
+function drawSnake(t, now) {
+  const pts = snakePoints(t);
+  const n = pts.length;
+
+  // 1) 바깥 윤곽 (꼬리 → 머리 순서)
+  for (let i = n - 1; i >= 0; i--) {
+    const r = widthAt(i, n) / 2;
+    ctx.fillStyle = '#0c2410';
+    ctx.beginPath();
+    ctx.arc(pts[i].x, pts[i].y, r + 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 2) 몸통 기본색 (배 쪽은 밝게, 등은 올리브 그린)
+  for (let i = n - 1; i >= 0; i--) {
+    const r = widthAt(i, n) / 2;
+    const g = ctx.createRadialGradient(
+      pts[i].x - r * 0.35, pts[i].y - r * 0.35, r * 0.1,
+      pts[i].x, pts[i].y, r
+    );
+    g.addColorStop(0, '#9fd16a');
+    g.addColorStop(0.6, '#5f9a3a');
+    g.addColorStop(1, '#3b6b26');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pts[i].x, pts[i].y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3) 등 무늬 (마름모 얼룩을 번갈아 배치)
+  for (let i = 2; i < n - 1; i++) {
+    if (i % 2) continue;
+    const r = widthAt(i, n) / 2;
+    const a = pts[i - 1], b = pts[i + 1];
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    ctx.save();
+    ctx.translate(pts[i].x, pts[i].y);
+    ctx.rotate(ang);
+    ctx.fillStyle = 'rgba(30,70,20,.75)';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.6, 0);
+    ctx.lineTo(0, -r * 0.7);
+    ctx.lineTo(-r * 0.6, 0);
+    ctx.lineTo(0, r * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 4) 비늘 하이라이트
+  for (let i = 1; i < n; i++) {
+    const r = widthAt(i, n) / 2;
+    ctx.fillStyle = 'rgba(220,255,190,.18)';
+    ctx.beginPath();
+    ctx.arc(pts[i].x - r * 0.25, pts[i].y - r * 0.25, r * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawHead(pts, now);
+}
+
+function drawHead(pts, now) {
+  const h = pts[0];
+  const nk = pts[1] || { x: h.x - 1, y: h.y };
+  const ang = Math.atan2(h.y - nk.y, h.x - nk.x);
+  const r = widthAt(0, pts.length) / 2;
+
+  // 보호막 표시
+  if (S.shield) {
+    ctx.strokeStyle = 'rgba(96,165,250,.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r + 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  ctx.rotate(ang);
+
+  // 혀 (살짝살짝 날름)
+  const flick = Math.sin(now / 110) > 0.2;
+  if (flick) {
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.9, 0);
+    ctx.lineTo(r * 1.5, 0);
+    ctx.moveTo(r * 1.5, 0);
+    ctx.lineTo(r * 1.9, -r * 0.35);
+    ctx.moveTo(r * 1.5, 0);
+    ctx.lineTo(r * 1.9, r * 0.35);
+    ctx.stroke();
+  }
+
+  // 머리 본체 (타원)
+  const hg = ctx.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.1, 0, 0, r * 1.1);
+  hg.addColorStop(0, '#a8e070');
+  hg.addColorStop(0.7, '#5f9a3a');
+  hg.addColorStop(1, '#2f5a1d');
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 1.05, r * 0.82, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#0c2410';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 콧구멍
+  ctx.fillStyle = '#163310';
+  ctx.beginPath();
+  ctx.arc(r * 0.82, -r * 0.2, r * 0.07, 0, Math.PI * 2);
+  ctx.arc(r * 0.82, r * 0.2, r * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 눈 (노란 홍채 + 세로 동공)
+  [-1, 1].forEach(side => {
+    const ex = r * 0.25, ey = side * r * 0.5;
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(ex, ey, r * 0.27, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.ellipse(ex + r * 0.03, ey, r * 0.07, r * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.beginPath();
+    ctx.arc(ex - r * 0.06, ey - r * 0.08, r * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
 function text(t, x, y) {
   ctx.fillText(t, x * CELL + CELL / 2, y * CELL + CELL / 2);
 }
 
 function render() {
+  const now = performance.now();
+  const t = Math.min(1, (now - S.tickAt) / TICK);
+
   ctx.clearRect(0, 0, 400, 400);
   if (Date.now() < S.boltUntil) {
     ctx.fillStyle = 'rgba(250,204,21,.12)';
@@ -243,29 +400,21 @@ function render() {
   S.items.forEach(i => text(ITEMS[i.t], i.x, i.y));
   S.enemies.forEach(e => text('🐭', e.x, e.y));
 
-  S.snake.forEach((s, i) => {
-    ctx.fillStyle = i === 0 ? '#4ade80' : '#16a34a';
-    ctx.fillRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2);
-  });
-  if (S.shield) {
-    const h = S.snake[0];
-    ctx.strokeStyle = '#60a5fa';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(h.x * CELL + 2, h.y * CELL + 2, CELL - 4, CELL - 4);
-  }
+  drawSnake(t, now);
 
   $('stage').textContent = S.stage;
   $('eaten').textContent = S.eaten;
   $('target').textContent = S.target;
   $('score').textContent = S.score;
+  requestAnimationFrame(render);
 }
 
-// 입력: 방향키/WASD
+/* ---------- 입력 ---------- */
+
 addEventListener('keydown', e => {
   if (KEYS[e.key]) { turn(KEYS[e.key]); e.preventDefault(); }
 });
 
-// 입력: 스와이프
 let sx = 0, sy = 0;
 cv.addEventListener('touchstart', e => {
   sx = e.touches[0].clientX; sy = e.touches[0].clientY;
@@ -278,11 +427,11 @@ cv.addEventListener('touchend', e => {
   else turn(dy > 0 ? 'down' : 'up');
 });
 
-$('restart').onclick = () => { init(); render(); };
+$('restart').onclick = () => { init(); };
 
 init();
-render();
-setInterval(() => { tick(); render(); }, TICK);
+requestAnimationFrame(render);
+setInterval(tick, TICK);
 </script>
 </body>
 </html>
