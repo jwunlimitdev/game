@@ -91,11 +91,11 @@ canvas.scratch{position:absolute;inset:0;width:100%;height:100%;touch-action:non
 </div>
 
 <div id="predictPanel" class="panel">
-  <p class="info">가상의 경기 결과로 진행되는 예측 게임이에요. 대회를 고르고 우승을 맞혀보세요.<br>1장 3,000원</p>
+  <p class="info">가상의 경기 결과로 진행되는 예측 게임이에요. 대회를 고르고 우승팀을 맞혀보세요.<br>1장 3,000원</p>
   <div class="sub">① 대회 선택</div>
   <div class="row" id="eventRow"></div>
-  <div class="sub">② 우승 후보 선택</div>
-  <div class="row" id="candRow"></div>
+  <div class="sub">② 우승팀 선택 (10팀 중 1팀)</div>
+  <div class="row" id="teamRow"></div>
   <p class="info" id="predInfo"></p>
   <button class="btn" id="predBuy" disabled>예측 복권 구매 (3,000원)</button>
   <div class="msg" id="predMsg"></div>
@@ -202,13 +202,14 @@ const TICKETS = [
 const ticketById = id => TICKETS.find(t => t.id === id);
 const LOSE_LINES = ['다음엔 될 거예요!', '아깝다… 한 번 더!', '행운이 곧 올 거예요', '꽝도 복권의 맛!'];
 
-/* 예측 복권: 대회별 상금. 후보 4팀 중 우승팀을 맞히면 당첨 (가상 결과) */
+/* 예측 복권: 대회별 상금. 10팀 중 우승팀을 맞히면 당첨 (가상 결과) */
 const EVENTS = [
-  {id: 'olympic', name: '올림픽', icon: '🏅', prize: 300000},
-  {id: 'asiad', name: '아시안게임', icon: '🌏', prize: 200000},
-  {id: 'baseball', name: '야구', icon: '⚾', prize: 150000},
-  {id: 'worldcup', name: '월드컵', icon: '⚽', prize: 500000}
+  {id: 'olympic', name: '올림픽', icon: '🏅', prize: 500000},
+  {id: 'asiad', name: '아시안게임', icon: '🌏', prize: 300000},
+  {id: 'baseball', name: '야구', icon: '⚾', prize: 250000},
+  {id: 'worldcup', name: '월드컵', icon: '⚽', prize: 1000000}
 ];
+const TEAMS = ['한국', '일본', '미국', '중국', '독일', '브라질', '프랑스', '이탈리아', '스페인', '호주'];
 const PREDICT_COST = 3000;
 const eventById = id => EVENTS.find(e => e.id === id);
 
@@ -470,7 +471,6 @@ function renderTypes(){
 let predEvent = null;
 let predPick = null;
 let predBusy = false;
-const CANDS = [1, 2, 3, 4];
 function renderPredict(){
   const eRow = $('#eventRow');
   if(!eRow.children.length){
@@ -486,29 +486,31 @@ function renderPredict(){
       };
       eRow.appendChild(b);
     });
-    const cRow = $('#candRow');
-    CANDS.forEach(n => {
+    const tRow = $('#teamRow');
+    TEAMS.forEach((name, i) => {
       const b = document.createElement('button');
       b.className = 'btn';
-      b.dataset.n = n;
-      b.textContent = `후보 ${n}`;
+      b.dataset.i = i;
+      b.textContent = name;
       b.onclick = () => {
         if(predBusy) return;
-        predPick = n;
+        predPick = i;
         render();
       };
-      cRow.appendChild(b);
+      tRow.appendChild(b);
     });
   }
-  eRow.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.id === predEvent));
-  $('#candRow').querySelectorAll('button').forEach(b => {
-    b.classList.toggle('active', +b.dataset.n === predPick);
+  eRow.querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.id === predEvent);
     b.disabled = predBusy;
   });
-  eRow.querySelectorAll('button').forEach(b => { b.disabled = predBusy; });
+  $('#teamRow').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', +b.dataset.i === predPick);
+    b.disabled = predBusy;
+  });
   const ev = eventById(predEvent);
   $('#predInfo').textContent = ev
-    ? `${ev.name} 우승 맞히기 · 적중 시 ${won(ev.prize)} · 적중 확률 25%`
+    ? `${ev.name} 우승팀 맞히기 · 적중 시 ${won(ev.prize)} · 적중 확률 10%`
     : '대회를 골라주세요';
   $('#predBuy').disabled = !ev || predPick === null || predBusy || S.money < PREDICT_COST;
 }
@@ -521,14 +523,14 @@ $('#predBuy').onclick = async () => {
   $('#predMsg').textContent = '🏆 결과 집계 중...';
   render();
   await sleep(1500);
-  const winner = pickOne(CANDS);
-  const won_ = winner === predPick;
-  const prize = won_ ? ev.prize : 0;
+  const winner = Math.floor(Math.random() * TEAMS.length);
+  const hitIt = winner === predPick;
+  const prize = hitIt ? ev.prize : 0;
   S.money += prize;
-  if(won_) S.predHits++;
-  $('#predMsg').textContent = won_
-    ? `🎉 적중! ${ev.name} 우승은 후보 ${winner} · +${won(prize)}`
-    : `아쉽지만 빗나갔어요. ${ev.name} 우승은 후보 ${winner}`;
+  if(hitIt) S.predHits++;
+  $('#predMsg').textContent = hitIt
+    ? `🎉 적중! ${ev.name} 우승은 ${TEAMS[winner]} · +${won(prize)}`
+    : `아쉽지만 빗나갔어요. ${ev.name} 우승은 ${TEAMS[winner]}`;
   celebrate(prize);
   predBusy = false;
   afterAction();
