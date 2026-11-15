@@ -286,32 +286,262 @@ function update() {
   if (held) { held.x = clawX; held.y = clawY + 30; }
 }
 
-function drawDoll(d) {
-  const { x, y, r } = d;
-  const name = d.t.name;
-  ctx.fillStyle = d.t.color;
-  if (name === '고양이' || name === '여우' || name === '드래곤') {
-    ctx.beginPath(); ctx.moveTo(x - r * 1.0, y - r * 0.5); ctx.lineTo(x - r * 0.6, y - r * 1.2); ctx.lineTo(x - r * 0.2, y - r * 0.7); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x + r * 1.0, y - r * 0.5); ctx.lineTo(x + r * 0.6, y - r * 1.2); ctx.lineTo(x + r * 0.2, y - r * 0.7); ctx.fill();
-  } else {
-    ctx.beginPath(); ctx.arc(x - r * 0.7, y - r * 0.8, r * 0.38, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x + r * 0.7, y - r * 0.8, r * 0.38, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#222';
-  ctx.beginPath(); ctx.arc(x - r * 0.35, y - r * 0.15, r * 0.1, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x + r * 0.35, y - r * 0.15, r * 0.1, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(x, y + r * 0.2, r * 0.25, 0.1, Math.PI - 0.1); ctx.stroke();
-  if (name === '유니콘') {
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.moveTo(x, y - r * 1.7); ctx.lineTo(x - 5, y - r * 0.9); ctx.lineTo(x + 5, y - r * 0.9); ctx.fill();
-  }
-  if (name === '천사') {
-    ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(x, y - r * 1.4, r * 0.5, r * 0.15, 0, 0, Math.PI * 2); ctx.stroke();
+// ───────── 인형 그래픽 ─────────
+
+// 색을 밝게(f>0) 또는 어둡게(f<0) 만든다
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const t = f < 0 ? 0 : 255, p = Math.abs(f);
+  r = Math.round(r + (t - r) * p);
+  g = Math.round(g + (t - g) * p);
+  b = Math.round(b + (t - b) * p);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+function ell(x, y, rx, ry, fill, line) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, Math.max(rx, 0.1), Math.max(ry, 0.1), 0, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (line) { ctx.strokeStyle = line; ctx.lineWidth = 2; ctx.stroke(); }
+}
+
+function tri(pts, fill, line) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (line) { ctx.strokeStyle = line; ctx.lineWidth = 2; ctx.stroke(); }
+}
+
+// 머리 뒤쪽 장식 (날개, 꼬리, 갈기)
+function drawBack(name, x, y, r, c, line) {
+  if (name === '사자') {
+    ell(x, y, r * 1.3, r * 1.22, '#c9782b', shade('#c9782b', -0.5));
+  } else if (name === '유니콘') {
+    ell(x - r * 0.45, y - r * 0.2, r * 1.1, r * 0.95, '#c59bff', line);
+    ell(x - r * 0.1, y - r * 0.7, r * 0.7, r * 0.5, '#ff9ad5', line);
+  } else if (name === '공룡') {
+    tri([[x + r * 0.6, y + r * 1.4], [x + r * 1.8, y + r * 1.5], [x + r * 0.9, y + r * 0.6]], c, line);
+  } else if (name === '여우') {
+    ell(x + r * 1.0, y + r * 1.3, r * 0.55, r * 0.25, c, line);
+    ell(x + r * 1.45, y + r * 1.3, r * 0.2, r * 0.22, '#ffffff', line);
+  } else if (name === '드래곤') {
+    [-1, 1].forEach(s => tri([[x + s * r * 0.6, y + r * 0.5], [x + s * r * 2.1, y - r * 0.4], [x + s * r * 1.7, y + r * 1.1]], shade(c, -0.15), line));
+  } else if (name === '천사') {
+    [-1, 1].forEach(s => ell(x + s * r * 1.15, y + r * 0.5, r * 0.45, r * 0.85, 'rgba(255,255,255,0.92)', '#c9d8ff'));
+  } else if (name === '요정') {
+    [-1, 1].forEach(s => ell(x + s * r * 1.1, y + r * 0.5, r * 0.5, r * 0.8, 'rgba(255,170,230,0.55)', 'rgba(255,120,200,0.9)'));
   }
 }
+
+// 몸통, 팔, 발
+function drawBody(name, x, y, r, c, line) {
+  const by = y + r * 1.05;
+  const g = ctx.createRadialGradient(x - r * 0.3, by - r * 0.3, r * 0.1, x, by, r);
+  g.addColorStop(0, shade(c, 0.35));
+  g.addColorStop(1, c);
+  ctx.fillStyle = g; ctx.strokeStyle = line; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(x, by, r * 0.78, r * 0.72, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+  // 팔
+  ell(x - r * 0.8, by + r * 0.1, r * 0.2, r * 0.34, c, line);
+  ell(x + r * 0.8, by + r * 0.1, r * 0.2, r * 0.34, c, line);
+  // 발
+  ell(x - r * 0.4, y + r * 1.7, r * 0.3, r * 0.18, shade(c, -0.15), line);
+  ell(x + r * 0.4, y + r * 1.7, r * 0.3, r * 0.18, shade(c, -0.15), line);
+
+  if (name === '펭귄') ell(x, by + r * 0.15, r * 0.5, r * 0.55, '#f8f8f8');
+  if (name === '로봇') ell(x, by, r * 0.18, r * 0.18, '#ffe066', line);
+}
+
+// 머리 뒤쪽 귀 (머리보다 먼저 그림)
+function drawEars(name, x, y, r, c, line) {
+  switch (name) {
+    case '토끼':
+      [-1, 1].forEach(s => {
+        ell(x + s * r * 0.4, y - r * 1.15, r * 0.24, r * 0.7, c, line);
+        ell(x + s * r * 0.4, y - r * 1.15, r * 0.12, r * 0.5, '#ffb3c6');
+      });
+      break;
+    case '곰':
+      [-1, 1].forEach(s => {
+        ell(x + s * r * 0.72, y - r * 0.7, r * 0.36, r * 0.36, c, line);
+        ell(x + s * r * 0.72, y - r * 0.7, r * 0.18, r * 0.18, shade(c, -0.2));
+      });
+      break;
+    case '고양이':
+    case '여우':
+      [-1, 1].forEach(s => {
+        tri([[x + s * r * 0.85, y - r * 0.15], [x + s * r * 0.7, y - r * 1.25], [x + s * r * 0.15, y - r * 0.7]], c, line);
+        tri([[x + s * r * 0.7, y - r * 0.3], [x + s * r * 0.65, y - r * 0.95], [x + s * r * 0.3, y - r * 0.65]],
+          name === '여우' ? '#2a1a1a' : '#ffb3c6');
+      });
+      break;
+    case '강아지':
+      [-1, 1].forEach(s => ell(x + s * r * 0.85, y - r * 0.2, r * 0.3, r * 0.6, shade(c, -0.25), line));
+      break;
+    case '돼지':
+      [-1, 1].forEach(s => tri([[x + s * r * 0.5, y - r * 0.6], [x + s * r * 0.95, y - r * 0.95], [x + s * r * 0.9, y - r * 0.2]], c, line));
+      break;
+    case '햄스터':
+      [-1, 1].forEach(s => {
+        ell(x + s * r * 0.5, y - r * 0.85, r * 0.22, r * 0.22, c, line);
+        ell(x + s * r * 0.5, y - r * 0.85, r * 0.12, r * 0.12, '#ffb3c6');
+      });
+      break;
+    case '판다':
+      [-1, 1].forEach(s => ell(x + s * r * 0.7, y - r * 0.7, r * 0.3, r * 0.3, '#222'));
+      break;
+    case '코알라':
+      [-1, 1].forEach(s => {
+        ell(x + s * r * 0.8, y - r * 0.4, r * 0.5, r * 0.5, c, line);
+        ell(x + s * r * 0.8, y - r * 0.4, r * 0.3, r * 0.3, '#d7dde5');
+      });
+      break;
+    case '기린':
+      [-1, 1].forEach(s => ell(x + s * r * 0.9, y - r * 0.2, r * 0.28, r * 0.15, c, line));
+      break;
+    case '공룡':
+      for (let i = -2; i <= 2; i++) {
+        tri([[x + i * r * 0.35 - r * 0.15, y - r * 0.6], [x + i * r * 0.35, y - r * 1.25], [x + i * r * 0.35 + r * 0.15, y - r * 0.6]], shade(c, -0.2), line);
+      }
+      break;
+    case '드래곤':
+      [-1, 1].forEach(s => tri([[x + s * r * 0.45, y - r * 0.6], [x + s * r * 0.9, y - r * 1.4], [x + s * r * 0.2, y - r * 0.9]], '#ffe066', line));
+      break;
+    case '로봇':
+      ell(x - r * 0.9, y, r * 0.2, r * 0.3, c, line);
+      ell(x + r * 0.9, y, r * 0.2, r * 0.3, c, line);
+      break;
+  }
+}
+
+// 머리
+function drawHead(name, x, y, r, c, line) {
+  const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.4, r * 0.1, x, y, r);
+  g.addColorStop(0, shade(c, 0.4));
+  g.addColorStop(1, c);
+  ctx.fillStyle = g; ctx.strokeStyle = line; ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (name === '로봇' && ctx.roundRect) ctx.roundRect(x - r * 0.9, y - r * 0.9, r * 1.8, r * 1.8, r * 0.4);
+  else if (name === '로봇') ctx.rect(x - r * 0.9, y - r * 0.9, r * 1.8, r * 1.8);
+  else ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+}
+
+// 눈 (흰 하이라이트 포함)
+function eyePair(x, y, r, size) {
+  [-1, 1].forEach(s => {
+    const px = x + s * r * 0.36, py = y - r * 0.12;
+    ell(px, py, r * size, r * size * 1.25, '#1b1b2f');
+    ell(px + r * size * 0.3, py - r * size * 0.4, r * size * 0.35, r * size * 0.35, '#ffffff');
+  });
+}
+
+// 얼굴 (눈, 볼, 코, 입)
+function drawFace(name, x, y, r, c, line) {
+  if (name === '개구리') {
+    // 눈은 drawTop에서 머리 위에 그림
+  } else if (name === '로봇') {
+    ctx.fillStyle = '#67e8f9';
+    ctx.fillRect(x - r * 0.5, y - r * 0.3, r * 0.3, r * 0.3);
+    ctx.fillRect(x + r * 0.2, y - r * 0.3, r * 0.3, r * 0.3);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x - r * 0.35, y + r * 0.3, r * 0.7, r * 0.1);
+    return;
+  } else if (name === '판다') {
+    ell(x - r * 0.36, y - r * 0.12, r * 0.3, r * 0.26, '#222');
+    ell(x + r * 0.36, y - r * 0.12, r * 0.3, r * 0.26, '#222');
+    eyePair(x, y, r, 0.13);
+  } else {
+    eyePair(x, y, r, 0.13);
+  }
+
+  // 볼 터치
+  ell(x - r * 0.55, y + r * 0.2, r * 0.16, r * 0.1, 'rgba(255,120,150,0.55)');
+  ell(x + r * 0.55, y + r * 0.2, r * 0.16, r * 0.1, 'rgba(255,120,150,0.55)');
+
+  // 코와 입
+  if (name === '펭귄') {
+    tri([[x - r * 0.18, y + r * 0.2], [x + r * 0.18, y + r * 0.2], [x, y + r * 0.48]], '#ff9f1c', line);
+    return;
+  }
+  if (name === '오리') {
+    ell(x, y + r * 0.3, r * 0.4, r * 0.14, '#ff9f1c', line);
+    return;
+  }
+  if (name === '돼지') {
+    ell(x, y + r * 0.28, r * 0.32, r * 0.24, shade(c, -0.1), line);
+    ell(x - r * 0.12, y + r * 0.28, r * 0.04, r * 0.06, '#333');
+    ell(x + r * 0.12, y + r * 0.28, r * 0.04, r * 0.06, '#333');
+    return;
+  }
+  if (name === '코알라' || name === '판다' || name === '강아지') {
+    ell(x, y + r * 0.05, r * 0.2, r * 0.14, '#222');
+  } else if (name === '고양이' || name === '여우') {
+    tri([[x - r * 0.08, y + r * 0.02], [x + r * 0.08, y + r * 0.02], [x, y + r * 0.12]], '#ff7aa2');
+  } else {
+    ell(x, y + r * 0.05, r * 0.08, r * 0.06, '#333');
+  }
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x, y + r * 0.2, r * 0.14, 0.15, Math.PI - 0.15); ctx.stroke();
+}
+
+// 머리 위 장식 (뿔, 광배, 안테나 등)
+function drawTop(name, x, y, r, c, line) {
+  if (name === '개구리') {
+    [-1, 1].forEach(s => {
+      ell(x + s * r * 0.5, y - r * 0.85, r * 0.42, r * 0.42, '#ffffff', line);
+      ell(x + s * r * 0.5, y - r * 0.8, r * 0.2, r * 0.2, '#1b1b2f');
+    });
+  } else if (name === '유니콘') {
+    tri([[x - r * 0.14, y - r * 0.85], [x + r * 0.14, y - r * 0.85], [x, y - r * 1.9]], '#fff8c4', line);
+    ctx.strokeStyle = '#e0b84d'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x - r * 0.1, y - r * 1.3); ctx.lineTo(x + r * 0.08, y - r * 1.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - r * 0.08, y - r * 1.55); ctx.lineTo(x + r * 0.06, y - r * 1.45); ctx.stroke();
+  } else if (name === '기린') {
+    [-1, 1].forEach(s => {
+      ell(x + s * r * 0.3, y - r * 1.05, r * 0.07, r * 0.25, '#c9a14a', line);
+      ell(x + s * r * 0.3, y - r * 1.3, r * 0.1, r * 0.1, '#c9a14a', line);
+    });
+    ell(x - r * 0.5, y - r * 0.4, r * 0.12, r * 0.12, shade(c, -0.25));
+    ell(x + r * 0.45, y - r * 0.55, r * 0.13, r * 0.13, shade(c, -0.25));
+    ell(x + r * 0.1, y - r * 0.7, r * 0.1, r * 0.1, shade(c, -0.25));
+  } else if (name === '천사') {
+    ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(x, y - r * 1.4, r * 0.5, r * 0.15, 0, 0, Math.PI * 2); ctx.stroke();
+  } else if (name === '요정') {
+    ell(x + r * 0.5, y - r * 0.9, r * 0.18, r * 0.18, '#ff9ad5', line);
+    ell(x + r * 0.5, y - r * 0.9, r * 0.07, r * 0.07, '#ffe066');
+  } else if (name === '로봇') {
+    ctx.strokeStyle = '#9fb4c7'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y - r * 0.9); ctx.lineTo(x, y - r * 1.4); ctx.stroke();
+    ell(x, y - r * 1.45, r * 0.1, r * 0.1, '#ff5c5c', line);
+  } else if (name === '오리') {
+    tri([[x - r * 0.1, y - r * 0.9], [x + r * 0.1, y - r * 0.9], [x + r * 0.35, y - r * 1.2]], c, line);
+  }
+}
+
+function drawDoll(d) {
+  const { x, y, r } = d;
+  const name = d.t.name, c = d.t.color, line = shade(c, -0.5);
+  ctx.save();
+  // 그림자
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(x, y + r * 1.85, r * 0.9, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+
+  drawBack(name, x, y, r, c, line);
+  drawBody(name, x, y, r, c, line);
+  drawEars(name, x, y, r, c, line);
+  drawHead(name, x, y, r, c, line);
+  drawFace(name, x, y, r, c, line);
+  drawTop(name, x, y, r, c, line);
+  ctx.restore();
+}
+
+// ───────── 게임 화면 ─────────
 
 function drawClaw() {
   ctx.strokeStyle = '#ccc'; ctx.lineWidth = 3;
