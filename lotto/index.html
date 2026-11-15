@@ -12,12 +12,11 @@ body.shake{animation:shake .45s}
 h1{margin:8px 0 12px;font-size:24px}
 .wallet{display:flex;align-items:center;gap:12px;background:#2a3150;border-radius:14px;padding:12px 16px;width:100%;max-width:520px;justify-content:space-between}
 .wallet strong{font-size:20px;color:#facc15}
-.tabs{display:flex;gap:8px;margin:18px 0}
+.tabs{display:flex;gap:8px;margin:18px 0;flex-wrap:wrap;justify-content:center}
 .tabs button,.btn{background:#2f3650;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-size:15px;cursor:pointer}
-.tabs button.active{background:#f5b700;color:#222;font-weight:700}
+.tabs button.active,.btn.active{background:#f5b700;color:#222;font-weight:700}
 .btn:disabled{opacity:.5;cursor:default}
 .btn.small{padding:6px 10px;font-size:12px}
-.btn.active{background:#f5b700;color:#222;font-weight:700}
 .panel{display:none;width:100%;max-width:520px;text-align:center}
 .panel.active{display:block}
 .missions{width:100%;max-width:520px;background:#222841;border-radius:14px;padding:12px 16px;margin-bottom:6px}
@@ -41,6 +40,7 @@ canvas.scratch{position:absolute;inset:0;width:100%;height:100%;touch-action:non
 .msg{min-height:28px;font-size:18px;font-weight:700;margin:10px 0}
 .toast{min-height:22px;color:#facc15;font-size:14px;font-weight:700;margin:6px 0}
 .bankrupt{color:#fca5a5;font-size:14px;min-height:20px;margin:6px 0}
+.sub{font-size:13px;color:#c7d2fe;margin:14px 0 6px}
 #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
 </style>
 </head>
@@ -63,6 +63,7 @@ canvas.scratch{position:absolute;inset:0;width:100%;height:100%;touch-action:non
 <div class="tabs">
   <button data-tab="pick" class="active">번호 추첨</button>
   <button data-tab="scratchPanel">복권 긁기</button>
+  <button data-tab="predictPanel">예측 복권</button>
 </div>
 
 <div id="pick" class="panel active">
@@ -87,6 +88,17 @@ canvas.scratch{position:absolute;inset:0;width:100%;height:100%;touch-action:non
   </div>
   <div class="msg" id="scratchMsg"></div>
   <button class="btn" id="newTicket"></button>
+</div>
+
+<div id="predictPanel" class="panel">
+  <p class="info">가상의 경기 결과로 진행되는 예측 게임이에요. 대회를 고르고 우승을 맞혀보세요.<br>1장 3,000원</p>
+  <div class="sub">① 대회 선택</div>
+  <div class="row" id="eventRow"></div>
+  <div class="sub">② 우승 후보 선택</div>
+  <div class="row" id="candRow"></div>
+  <p class="info" id="predInfo"></p>
+  <button class="btn" id="predBuy" disabled>예측 복권 구매 (3,000원)</button>
+  <div class="msg" id="predMsg"></div>
 </div>
 
 <script>
@@ -175,20 +187,30 @@ const START = 1000000;
 const COST = 1000;
 const LOTTO_PRIZE = {1: 100000000, 2: 5000000, 3: 1500000, 4: 50000};
 
-/* 가중치 합 10000 기준. 0원 가중치가 대부분 */
+/* 가중치 합 10000 기준. 0원 가중치 이외가 당첨 */
 const TICKETS = [
   {id: 'basic', name: '행운 복권', cost: 1000, color: '#b8bcc6', text: '#6b6f7a', prizes: [
-    {v: 0, w: 9400}, {v: 1000, w: 400}, {v: 5000, w: 150}, {v: 50000, w: 45}, {v: 1000000, w: 5}
+    {v: 0, w: 8045}, {v: 1000, w: 1200}, {v: 5000, w: 600}, {v: 50000, w: 150}, {v: 1000000, w: 5}
   ]},
   {id: 'gold', name: '황금 복권', cost: 5000, color: '#d4af37', text: '#5c4a10', prizes: [
-    {v: 0, w: 9605}, {v: 5000, w: 250}, {v: 20000, w: 100}, {v: 100000, w: 40}, {v: 5000000, w: 5}
+    {v: 0, w: 8046}, {v: 5000, w: 1300}, {v: 20000, w: 500}, {v: 100000, w: 150}, {v: 5000000, w: 4}
   ]},
   {id: 'diamond', name: '다이아 복권', cost: 10000, color: '#9bd7f5', text: '#1e4a63', prizes: [
-    {v: 0, w: 9706}, {v: 10000, w: 150}, {v: 50000, w: 100}, {v: 300000, w: 40}, {v: 10000000, w: 4}
+    {v: 0, w: 8468}, {v: 10000, w: 1200}, {v: 50000, w: 300}, {v: 300000, w: 30}, {v: 10000000, w: 2}
   ]}
 ];
 const ticketById = id => TICKETS.find(t => t.id === id);
 const LOSE_LINES = ['다음엔 될 거예요!', '아깝다… 한 번 더!', '행운이 곧 올 거예요', '꽝도 복권의 맛!'];
+
+/* 예측 복권: 대회별 상금. 후보 4팀 중 우승팀을 맞히면 당첨 (가상 결과) */
+const EVENTS = [
+  {id: 'olympic', name: '올림픽', icon: '🏅', prize: 300000},
+  {id: 'asiad', name: '아시안게임', icon: '🌏', prize: 200000},
+  {id: 'baseball', name: '야구', icon: '⚾', prize: 150000},
+  {id: 'worldcup', name: '월드컵', icon: '⚽', prize: 500000}
+];
+const PREDICT_COST = 3000;
+const eventById = id => EVENTS.find(e => e.id === id);
 
 const hit = (s, n) => s.bestRank > 0 && s.bestRank <= n;
 const MISSIONS = [
@@ -201,12 +223,14 @@ const MISSIONS = [
   {id: 'm7', title: '로또 1등 당첨', reward: 10000000, ok: s => hit(s, 1)},
   {id: 'm8', title: '잔액 200만원 돌파', reward: 50000, ok: s => s.maxMoney >= 2000000},
   {id: 'm9', title: '황금 복권 긁기', reward: 30000, ok: s => s.byType.gold >= 1},
-  {id: 'm10', title: '다이아 복권 긁기', reward: 100000, ok: s => s.byType.diamond >= 1}
+  {id: 'm10', title: '다이아 복권 긁기', reward: 100000, ok: s => s.byType.diamond >= 1},
+  {id: 'm11', title: '예측 복권 적중', reward: 100000, ok: s => s.predHits >= 1},
+  {id: 'm12', title: '예측 복권 10회 구매', reward: 50000, ok: s => s.predPlays >= 10}
 ];
 
 function newState(){
   return {money: START, maxMoney: START, draws: 0, scratches: 0, bestRank: 0,
-    byType: {basic: 0, gold: 0, diamond: 0}, done: {}};
+    byType: {basic: 0, gold: 0, diamond: 0}, predPlays: 0, predHits: 0, done: {}};
 }
 let S = newState();
 
@@ -294,7 +318,6 @@ function makeBall(n, bonus){
   d.textContent = n;
   return d;
 }
-/* 5개 일치는 3등 이하로 취급하지 않고 꽝 처리(확률 낮춤) */
 function rankOf(matched, bonusHit){
   if(matched === 6) return 1;
   if(matched === 5 && bonusHit) return 2;
@@ -400,7 +423,7 @@ function checkScratch(){
     S.byType[card.id]++;
     $('#scratchMsg').textContent = cardPrize
       ? `🎉 ${card.name} ${won(cardPrize)} 당첨!`
-      : `${pickOne(LOSE_LINES)}`;
+      : pickOne(LOSE_LINES);
     celebrate(cardPrize);
     afterAction();
   }
@@ -443,6 +466,74 @@ function renderTypes(){
   });
 }
 
+/* 예측 복권 */
+let predEvent = null;
+let predPick = null;
+let predBusy = false;
+const CANDS = [1, 2, 3, 4];
+function renderPredict(){
+  const eRow = $('#eventRow');
+  if(!eRow.children.length){
+    EVENTS.forEach(ev => {
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.dataset.id = ev.id;
+      b.textContent = `${ev.icon} ${ev.name}`;
+      b.onclick = () => {
+        if(predBusy) return;
+        predEvent = ev.id;
+        render();
+      };
+      eRow.appendChild(b);
+    });
+    const cRow = $('#candRow');
+    CANDS.forEach(n => {
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.dataset.n = n;
+      b.textContent = `후보 ${n}`;
+      b.onclick = () => {
+        if(predBusy) return;
+        predPick = n;
+        render();
+      };
+      cRow.appendChild(b);
+    });
+  }
+  eRow.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.id === predEvent));
+  $('#candRow').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', +b.dataset.n === predPick);
+    b.disabled = predBusy;
+  });
+  eRow.querySelectorAll('button').forEach(b => { b.disabled = predBusy; });
+  const ev = eventById(predEvent);
+  $('#predInfo').textContent = ev
+    ? `${ev.name} 우승 맞히기 · 적중 시 ${won(ev.prize)} · 적중 확률 25%`
+    : '대회를 골라주세요';
+  $('#predBuy').disabled = !ev || predPick === null || predBusy || S.money < PREDICT_COST;
+}
+$('#predBuy').onclick = async () => {
+  const ev = eventById(predEvent);
+  if(!ev || predPick === null || predBusy || S.money < PREDICT_COST) return;
+  predBusy = true;
+  S.money -= PREDICT_COST;
+  S.predPlays++;
+  $('#predMsg').textContent = '🏆 결과 집계 중...';
+  render();
+  await sleep(1500);
+  const winner = pickOne(CANDS);
+  const won_ = winner === predPick;
+  const prize = won_ ? ev.prize : 0;
+  S.money += prize;
+  if(won_) S.predHits++;
+  $('#predMsg').textContent = won_
+    ? `🎉 적중! ${ev.name} 우승은 후보 ${winner} · +${won(prize)}`
+    : `아쉽지만 빗나갔어요. ${ev.name} 우승은 후보 ${winner}`;
+  celebrate(prize);
+  predBusy = false;
+  afterAction();
+};
+
 /* 화면 갱신 */
 function render(){
   $('#money').textContent = won(S.money);
@@ -458,17 +549,21 @@ function render(){
   $('#oddsInfo').textContent = `${t.name} 당첨 확률 약 ${winPct}% · 최고 ${won(Math.max(...t.prizes.map(p => p.v)))}`;
   $('#newTicket').textContent = `${t.name} 구매 (${won(t.cost)})`;
   $('#newTicket').disabled = pending || S.money < t.cost;
+  renderPredict();
 }
 
 /* 처음부터 */
 $('#resetAll').onclick = () => {
-  if(drawing) return;
+  if(drawing || predBusy) return;
   S = newState();
   picks.clear();
   refreshGrid();
   $('#balls').innerHTML = '';
   $('#result').textContent = '';
   $('#toast').textContent = '';
+  $('#predMsg').textContent = '';
+  predEvent = null;
+  predPick = null;
   selType = 'basic';
   resetScratch(ticketById('basic'));
   render();
