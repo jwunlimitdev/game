@@ -1,6 +1,7 @@
 (() => {
   const cv = document.getElementById('claw'), g = cv.getContext('2d'), W = cv.width, H = cv.height;
   const $ = id => document.getElementById(id);
+  window.addEventListener('error', e => { const m = $('gmsg'); if (m) m.textContent = '오류: ' + e.message; });
   const COST = 150, RATE = [0.8, 0.55, 0.35, 0.2], RN = ['', '일반', '레어', '에픽', '전설'];
   const RC = ['#9ca3af', '#60a5fa', '#c084fc', '#fbbf24'];
   const CHUTE = {x: 310, y: 256};
@@ -19,23 +20,34 @@
     return list[Math.floor(Math.random() * list.length)];
   };
   const lerp = (a, b, k) => a + (b - a) * k;
+  function rr(x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+    g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r);
+    g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+  }
 
   let items = [], cs = {x: 180, y: 40, dir: 1, phase: 'move', target: null, open: 14, shake: 0};
   let playing = false, parts = [], reveal = null;
   let msg = '코인 150으로 한 번 도전해 보세요';
+  const setMsg = m => { msg = m; $('gmsg').textContent = m; };
 
   function burst(x, y, c, n) {
     for (let i = 0; i < n; i++) parts.push({x, y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5 - 1.5, life: 1, c});
   }
 
   function start() {
-    if (playing) return;
-    if (!window.FG.spend(COST)) { msg = '코인이 부족해요 (필요: ' + COST + ')'; $('gmsg').textContent = msg; return; }
-    playing = true; reveal = null;
-    items = Array.from({length: 10}, (_, i) => ({x: 30 + i * 31 + (Math.random() * 10 - 5), y: 226 + Math.random() * 14, gear: pickGear()}));
-    cs = {x: 180, y: 40, dir: 1, phase: 'move', target: null, open: 14, shake: 0};
-    msg = '집게가 오가는 순간 화면을 터치하세요!';
-    $('gmsg').textContent = msg; $('gStart').disabled = true;
+    try {
+      if (playing) return;
+      if (!window.FG) { setMsg('게임 파일을 불러오지 못했어요. 새로고침(캐시 삭제) 후 다시 해 주세요.'); return; }
+      if (!window.FG.spend(COST)) { setMsg('코인이 부족해요 (필요: ' + COST + ', 보유: ' + window.FG.coins() + ')'); return; }
+      playing = true; reveal = null;
+      items = Array.from({length: 10}, (_, i) => ({x: 30 + i * 31 + (Math.random() * 10 - 5), y: 226 + Math.random() * 14, gear: pickGear()}));
+      cs = {x: 180, y: 40, dir: 1, phase: 'move', target: null, open: 14, shake: 0};
+      setMsg('집게가 오가는 순간 화면을 터치하세요!');
+      $('gStart').disabled = true;
+    } catch (e) { setMsg('오류: ' + e.message); playing = false; }
   }
 
   function drop() {
@@ -47,10 +59,10 @@
     if (gear) {
       const eq = window.FG.give(gear);
       reveal = {t: performance.now(), gear, eq};
-      msg = gear.e + ' ' + gear.n + ' 획득! (' + RN[gear.r] + ')';
+      setMsg(gear.e + ' ' + gear.n + ' 획득! (' + RN[gear.r] + ')');
       burst(180, 150, RC[gear.r - 1], 40);
-    } else msg = '빈손이에요... 다시 도전!';
-    $('gmsg').textContent = msg; $('gStart').disabled = false;
+    } else setMsg('빈손이에요... 다시 도전!');
+    $('gStart').disabled = false;
   }
 
   function update() {
@@ -158,7 +170,7 @@
         g.save(); g.translate(180, 150); g.scale(.4 + .6 * e, .4 + .6 * e); g.globalAlpha = e;
         const c = RC[reveal.gear.r - 1];
         g.shadowColor = c; g.shadowBlur = 30; g.fillStyle = '#111827';
-        g.beginPath(); g.roundRect(-110, -80, 220, 160, 16); g.fill();
+        rr(-110, -80, 220, 160, 16); g.fill();
         g.shadowBlur = 0; g.strokeStyle = c; g.lineWidth = 3; g.stroke();
         g.textAlign = 'center'; g.fillStyle = c; g.font = 'bold 13px sans-serif'; g.fillText(RN[reveal.gear.r].toUpperCase() + ' · ' + reveal.gear.type.toUpperCase(), 0, -56);
         g.font = '52px serif'; g.textBaseline = 'middle'; g.fillText(reveal.gear.e, 0, -8);
@@ -172,7 +184,7 @@
   }
 
   function loop(now) {
-    update(); draw(now);
+    try { update(); draw(now); } catch (e) { setMsg('오류: ' + e.message); }
     requestAnimationFrame(loop);
   }
 
