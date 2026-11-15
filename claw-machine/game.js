@@ -4,21 +4,36 @@ const W = 480, H = 640;
 const TOP = 90, FLOOR = 500, DROP_Y = 455, BIN_X = 400, MIN_X = 50, MAX_X = 430;
 const START_COINS = 20;
 const DEX_BONUS = 3;
+const SELL_PRICE = [5, 15, 30];   // 일반 / 레어 / 에픽 판매가
+const MIN_SELL_COUNT = 2;         // 보관함에 2개 이상일 때 판매 가능
 
-// 미션: 클리어 시 코인 보상 (한 번만 받음)
+function thresholdMissions(prefix, label, key, values, rewards) {
+  return values.map((v, i) => ({
+    id: prefix + v,
+    text: label.replace('{n}', v),
+    reward: rewards[i],
+    check: s => s[key] >= v
+  }));
+}
+
+// 미션 목록 (총 36개)
 const MISSIONS = [
-  { id: 'first', text: '첫 인형 획득',   reward: 5,  check: s => s.prizes >= 1 },
-  { id: 'p5',    text: '인형 5개 획득',  reward: 10, check: s => s.prizes >= 5 },
-  { id: 'p10',   text: '인형 10개 획득', reward: 20, check: s => s.prizes >= 10 },
-  { id: 'p30',   text: '인형 30개 획득', reward: 40, check: s => s.prizes >= 30 },
-  { id: 'epic',  text: '에픽 인형 획득', reward: 30, check: s => s.epic >= 1 },
-  { id: 'd5',    text: '도감 5종 등록',  reward: 15, check: s => s.dex >= 5 },
-  { id: 'd10',   text: '도감 10종 등록', reward: 25, check: s => s.dex >= 10 },
-  { id: 'd20',   text: '도감 20종 완성', reward: 60, check: s => s.dex >= 20 }
+  ...thresholdMissions('p', '인형 {n}개 획득', 'prizes', [1, 3, 5, 10, 20, 30, 50, 100], [5, 8, 10, 20, 30, 40, 60, 100]),
+  ...thresholdMissions('d', '도감 {n}종 등록', 'dex', [1, 3, 5, 8, 10, 12, 15, 18, 20], [3, 5, 10, 12, 15, 20, 25, 30, 60]),
+  ...thresholdMissions('e', '에픽 인형 {n}개 획득', 'epic', [1, 3, 5, 10], [30, 50, 80, 120]),
+  ...thresholdMissions('s', '인형 {n}개 판매', 'sold', [1, 5, 10, 20, 50], [5, 15, 25, 40, 80]),
+  ...thresholdMissions('sc', '점수 {n}점 달성', 'score', [1000, 5000, 10000, 30000, 50000], [10, 30, 50, 80, 120]),
+  ...SHOPS.map((s, i) => ({
+    id: 'v' + i,
+    text: s.name + ' 방문',
+    reward: 10,
+    check: st => st.visited.includes(i)
+  }))
 ];
 
 let shopIdx = 0, state, clawX, clawY, clawOpen, dir, grabT, dolls, held;
-let coins, score, session, msgTimer = 0;
+let msgTimer = 0;
+let coins, score, stats, collection, completed, visited, inv;
 
 function loadJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
@@ -28,8 +43,35 @@ function saveJSON(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
 }
 
-let collection = new Set(loadJSON('clawCollection', []));
-let completed = new Set(loadJSON('clawMissions', []));
+function loadSave() {
+  const d = loadJSON('clawSave', null);
+  if (d) {
+    coins = d.coins; score = d.score; stats = d.stats;
+    collection = new Set(d.collection);
+    completed = new Set(d.completed);
+    visited = new Set(d.visited);
+    inv = d.inv.map(n => DOLL_TYPES.find(t => t.name === n)).filter(Boolean);
+  } else {
+    // 이전 버전 저장값 이어받기
+    coins = START_COINS; score = 0;
+    stats = { prizes: 0, epic: 0, sold: 0 };
+    collection = new Set(loadJSON('clawCollection', []));
+    completed = new Set(loadJSON('clawMissions', []));
+    visited = new Set();
+    inv = [];
+  }
+  visited.add(shopIdx);
+}
+
+function save() {
+  saveJSON('clawSave', {
+    coins, score, stats,
+    collection: [...collection],
+    completed: [...completed],
+    visited: [...visited],
+    inv: inv.map(t => t.name)
+  });
+}
 
 function rand(a, b) { return a + Math.random() * (b - a); }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -57,8 +99,9 @@ function setMsg(text) {
 function updHud() {
   document.getElementById('coins').textContent = coins;
   document.getElementById('score').textContent = score;
-  document.getElementById('prizes').textContent = session.prizes;
+  document.getElementById('prizes').textContent = stats.prizes;
   document.getElementById('dexCount').textContent = collection.size;
+  document.getElementById('invCount').textContent = inv.length;
 }
 
 function renderShops() {
@@ -87,7 +130,9 @@ function enterShop() {
   dolls = []; held = null;
   fillDolls(10);
   applyTheme();
-  setMsg(SHOPS[shopIdx].name + '에 오신 것을 환영합니다!');
+  visited.add(shopIdx);
+  const rewards = checkMissions();
+  setMsg(SHOPS[shopIdx].name + '에 오신 것을 환영합니다!' + rewards);
 }
 
 function switchShop(i) {
@@ -96,12 +141,13 @@ function switchShop(i) {
   shopIdx = i;
   enterShop();
   updHud();
+  save();
 }
 
 function drop() {
   if (state !== 'idle') return;
   const s = SHOPS[shopIdx];
-  if (coins < s.cost) { setMsg('코인이 부족해요! 미션을 클리어해 코인을 모으세요'); return; }
+  if (coins < s.cost) { setMsg('코인이 부족해요! 미션을 클리어하거나 인형을 팔아 코인을 모으세요'); return; }
   coins -= s.cost;
   updHud();
   state = 'down'; clawY = TOP; clawOpen = true;
@@ -123,35 +169,52 @@ function tryGrab() {
 
 function release() {
   const t = held.t;
+  inv.push(t);
+  stats.prizes++;
+  if (t.tier === 2) stats.epic++;
   score += t.value;
-  session.prizes++;
-  if (t.tier === 2) session.epic++;
   let extra = '';
   if (!collection.has(t.name)) {
     collection.add(t.name);
-    saveJSON('clawCollection', [...collection]);
     coins += DEX_BONUS;
     extra = ' 🆕 도감 등록! +' + DEX_BONUS + '코인';
     renderDex();
   }
   held = null;
   fillDolls(10);
-  updHud();
   const rewards = checkMissions();
-  setMsg(t.name + ' 획득! +' + t.value + '점' + extra + rewards);
+  setMsg(t.name + ' 보관함에 들어갔어요! +' + t.value + '점' + extra + rewards);
+  renderInv();
+  updHud();
+  save();
+}
+
+function sellDoll(i) {
+  if (inv.length < MIN_SELL_COUNT) { setMsg('인형이 2개 이상 있어야 팔 수 있어요'); return; }
+  const t = inv.splice(i, 1)[0];
+  const price = SELL_PRICE[t.tier];
+  coins += price;
+  stats.sold++;
+  const rewards = checkMissions();
+  setMsg(t.name + ' 판매! +' + price + '코인' + rewards);
+  renderInv();
+  updHud();
+  save();
 }
 
 function checkMissions() {
-  const stats = { prizes: session.prizes, epic: session.epic, dex: collection.size };
+  const st = {
+    prizes: stats.prizes, epic: stats.epic, sold: stats.sold,
+    score, dex: collection.size, visited: [...visited]
+  };
   let text = '';
   MISSIONS.forEach(m => {
-    if (!completed.has(m.id) && m.check(stats)) {
+    if (!completed.has(m.id) && m.check(st)) {
       completed.add(m.id);
       coins += m.reward;
       text += ' 🎯 미션 클리어! ' + m.text + ' +' + m.reward + '코인';
     }
   });
-  if (text) saveJSON('clawMissions', [...completed]);
   renderMissions();
   updHud();
   return text;
@@ -170,17 +233,37 @@ function renderDex() {
 
 function renderMissions() {
   const list = document.getElementById('missionList');
+  const done = MISSIONS.filter(m => completed.has(m.id)).length;
+  document.getElementById('missionCount').textContent = done + '/' + MISSIONS.length;
   list.innerHTML = MISSIONS.map(m => {
-    const done = completed.has(m.id);
-    return '<div class="mission' + (done ? ' done' : '') + '">' +
-      '<span>' + (done ? '✅ ' : '⬜ ') + m.text + '</span>' +
+    const isDone = completed.has(m.id);
+    return '<div class="mission' + (isDone ? ' done' : '') + '">' +
+      '<span>' + (isDone ? '✅ ' : '⬜ ') + m.text + '</span>' +
       '<b>+' + m.reward + '코인</b></div>';
   }).join('');
 }
 
+function renderInv() {
+  const box = document.getElementById('invList');
+  const can = inv.length >= MIN_SELL_COUNT;
+  document.getElementById('invInfo').textContent =
+    '보관 ' + inv.length + '개 · 2개 이상이면 판매할 수 있어요';
+  if (!inv.length) {
+    box.innerHTML = '<div class="empty">보관함이 비었어요. 인형을 잡아 보세요!</div>';
+    return;
+  }
+  box.innerHTML = inv.map((t, i) =>
+    '<div class="mission"><span><i class="dotm" style="background:' + t.color + '"></i>' + t.name + '</span>' +
+    '<button class="sell" data-i="' + i + '"' + (can ? '' : ' disabled') + '>판매 +' + SELL_PRICE[t.tier] + '</button></div>'
+  ).join('');
+  box.querySelectorAll('button.sell').forEach(b => {
+    b.onclick = () => sellDoll(Number(b.dataset.i));
+  });
+}
+
 function update() {
   if (msgTimer > 0 && --msgTimer === 0 && state === 'idle' && coins < SHOPS[shopIdx].cost) {
-    setMsg('코인이 부족해요! 미션을 클리어해 코인을 모으세요');
+    setMsg('코인이 부족해요! 미션을 클리어하거나 인형을 팔아 코인을 모으세요');
   }
   if (state === 'idle') {
     if (dir) clawX = clamp(clawX + dir * 3, MIN_X, MAX_X);
@@ -303,13 +386,14 @@ function togglePanel(panelId, btnId, label) {
 }
 document.getElementById('toggleDex').onclick = () => togglePanel('dex', 'toggleDex', '📖 도감');
 document.getElementById('toggleMission').onclick = () => togglePanel('mission', 'toggleMission', '🎯 미션');
+document.getElementById('toggleInv').onclick = () => togglePanel('inv', 'toggleInv', '🎒 보관함');
 
 // 시작
-coins = START_COINS;
-score = 0;
-session = { prizes: 0, epic: 0 };
+loadSave();
 enterShop();
 renderDex();
 renderMissions();
+renderInv();
 updHud();
+save();
 loop();
