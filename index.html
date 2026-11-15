@@ -86,6 +86,7 @@
     .minitactics .card-glow { background: #a78bfa; }
     .territorywar .card-glow { background: #f87171; }
     .airport .card-glow { background: #38bdf8; }
+    .snake .card-glow { background: #4ade80; }
     .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .game-icon { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; font-size: 29px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); }
     .tag { padding: 6px 9px; border-radius: 999px; color: #c5d7ff; background: rgba(112,165,255,.13); font-size: 10px; font-weight: 800; }
@@ -137,7 +138,7 @@
         <a class="primary" href="#games">게임 둘러보기&nbsp; ↓</a>
       </div>
       <div class="stats" aria-label="게임 통계">
-        <div class="stat"><strong>08</strong><span>등록된 게임</span></div>
+        <div class="stat"><strong>09</strong><span>등록된 게임</span></div>
         <div class="stat"><strong>01</strong><span>게임 허브</span></div>
         <div class="stat"><strong>∞</strong><span>새로운 가능성</span></div>
       </div>
@@ -147,7 +148,7 @@
   <main class="wrap" id="games">
     <div class="section-top">
       <div><div class="section-kicker">GAME LIBRARY</div><h2>게임 라이브러리</h2></div>
-      <div class="section-note">현재 등록된 게임 8개</div>
+      <div class="section-note">현재 등록된 게임 9개</div>
     </div>
     <div class="toolbar">
       <input class="search" id="gameSearch" type="search" placeholder="게임 이름 검색..." aria-label="게임 이름 검색">
@@ -224,6 +225,14 @@
         <h3>JW INTERNATIONAL</h3>
         <p>나만의 공항을 경영하세요. 항공사 유치, 노선 개설, 시설 투자와 재무 관리를 통해 국제공항으로 성장시키세요.</p>
         <div class="card-bottom"><span class="launch">공항 운영 시작 <span>→</span></span><span class="section-note">08</span></div>
+      </a>
+
+      <a class="game-card snake" href="./snake/" data-category="arcade" data-name="스네이크 디펜스 뱀 먹이 아이템 스테이지 아케이드">
+        <span class="card-glow"></span>
+        <div class="card-head"><span class="game-icon">🐍</span><span class="tag">ARCADE</span></div>
+        <h3>스네이크 디펜스</h3>
+        <p>뱀을 조종해 먹이를 먹고 길어지는 아케이드 게임. 번개·방패·자석 아이템으로 쥐를 막으며 스테이지를 넘어보세요.</p>
+        <div class="card-bottom"><span class="launch">게임 시작 <span>→</span></span><span class="section-note">09</span></div>
       </a>
     </div>
     <div class="empty" id="emptyState">검색 결과가 없어요. 다른 이름이나 카테고리를 선택해 보세요.</div>
