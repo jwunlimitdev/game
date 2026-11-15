@@ -19,7 +19,7 @@ button{padding:12px 28px;font-size:16px;border:0;border-radius:8px;background:#2
 <body>
 <div id="hud">
   <span>스테이지 <b id="stage">1</b></span>
-  <span>먹이 <b id="eaten">0</b>/<b id="target">5</b></span>
+  <span>먹이 <b id="eaten">0</b>/<b id="target">4</b></span>
   <span>점수 <b id="score">0</b></span>
   <span>최고 <b id="best">0</b></span>
 </div>
@@ -28,7 +28,7 @@ button{padding:12px 28px;font-size:16px;border:0;border-radius:8px;background:#2
 <div id="overlay"><div id="over-text"></div><button id="restart">다시 시작</button></div>
 
 <script>
-const N = 20, CELL = 400 / N, TICK = 140;
+const N = 20, CELL = 400 / N, TICK = 180;
 const HELP = '스와이프 또는 방향키로 이동 · ⚡번개 🛡방패 🧲자석';
 const ITEMS = { bolt: '⚡', shield: '🛡', magnet: '🧲' };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -52,8 +52,8 @@ function init() {
   S = {
     snake: start, prev: start.map(p => ({ ...p })), tickAt: performance.now(),
     dir: 'right', queue: [], food: null, items: [], obstacles: new Set(), enemies: [],
-    stage: 1, eaten: 0, target: 5, score: 0, ticks: 0,
-    shield: false, boltUntil: 0, magnetUntil: 0, over: false
+    stage: 1, eaten: 0, target: 4, score: 0, ticks: 0,
+    shield: true, boltUntil: 0, magnetUntil: 0, over: false
   };
   makeStage();
   placeFood();
@@ -63,7 +63,7 @@ function init() {
 
 function nearHead(x, y) {
   const h = S.snake[0];
-  return Math.abs(x - h.x) + Math.abs(y - h.y) < 4;
+  return Math.abs(x - h.x) + Math.abs(y - h.y) < 5;
 }
 
 function occupied(x, y) {
@@ -82,12 +82,12 @@ function freeCell() {
 
 function makeStage() {
   S.obstacles = new Set();
-  const n = Math.min(3 + S.stage * 2, 18);
+  const n = Math.min(2 + S.stage, 10);
   for (let i = 0; i < n; i++) { const p = freeCell(); S.obstacles.add(key(p.x, p.y)); }
   S.enemies = [];
-  const ne = Math.min(S.stage, 5);
+  const ne = Math.min(Math.floor(S.stage / 2), 3);
   for (let i = 0; i < ne; i++) { const p = freeCell(); S.enemies.push(p); }
-  S.target = 5 + (S.stage - 1) * 3;
+  S.target = 4 + (S.stage - 1) * 2;
   S.eaten = 0;
 }
 
@@ -118,7 +118,7 @@ function moveEnemies() {
     if (!opts.length) return;
     const dist = p => Math.abs(p.x - h.x) + Math.abs(p.y - h.y);
     opts.sort((a, b) => dist(a) - dist(b));
-    const p = Math.random() < 0.6 ? opts[0] : opts[rnd(opts.length)];
+    const p = Math.random() < 0.4 ? opts[0] : opts[rnd(opts.length)];
     e.x = p.x; e.y = p.y;
   });
 }
@@ -126,7 +126,7 @@ function moveEnemies() {
 function pullFood(now) {
   if (now >= S.magnetUntil || !S.food) return;
   const hd = S.snake[0], f = S.food;
-  if (Math.abs(f.x - hd.x) + Math.abs(f.y - hd.y) > 5) return;
+  if (Math.abs(f.x - hd.x) + Math.abs(f.y - hd.y) > 6) return;
   let nx = f.x, ny = f.y;
   if (Math.abs(f.x - hd.x) > Math.abs(f.y - hd.y)) nx += Math.sign(hd.x - f.x);
   else ny += Math.sign(hd.y - f.y);
@@ -174,8 +174,8 @@ function tick() {
   const now = Date.now();
   if (S.queue.length) S.dir = S.queue.shift();
   if (S.ticks % 7 === 0) S.score += 1 * S.stage;
-  if (S.ticks % 25 === 0) spawnItem();
-  if (now >= S.boltUntil && S.ticks % 2 === 0) moveEnemies();
+  if (S.ticks % 20 === 0) spawnItem();
+  if (now >= S.boltUntil && S.ticks % 3 === 0) moveEnemies();
 
   const [dx, dy] = DIRS[S.dir];
   const hd = S.snake[0];
@@ -211,9 +211,9 @@ function tick() {
   if (idx >= 0) {
     const t = S.items[idx].t;
     S.items.splice(idx, 1);
-    if (t === 'bolt') S.boltUntil = now + 4000;
+    if (t === 'bolt') S.boltUntil = now + 6000;
     if (t === 'shield') S.shield = true;
-    if (t === 'magnet') S.magnetUntil = now + 5000;
+    if (t === 'magnet') S.magnetUntil = now + 7000;
     flash(ITEMS[t] + (t === 'bolt' ? ' 번개! 적 정지' : t === 'shield' ? ' 방패 획득' : ' 자석 발동'));
   }
 
