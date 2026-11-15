@@ -4,7 +4,7 @@
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover'>
 <title>조용한 낚시터</title>
-<link rel='stylesheet' href='style.css?v=4'>
+<link rel='stylesheet' href='style.css?v=5'>
 </head>
 <body>
 <header><a href='../'>← 홈</a><h1>조용한 낚시터</h1><span></span></header>
@@ -26,6 +26,7 @@
 </div>
 <div class='btns'>
   <button id='gachaBtn' class='main'>🎰 장비 뽑기</button>
+  <button id='invBtn' class='main'>📦 인벤토리</button>
 </div>
 <div class='dex'>
   <div class='dex-title'><span>도감</span><span id='dexCount'></span></div>
@@ -40,8 +41,14 @@
     <button id='gStart' class='main act'>뽑기 (150코인)</button>
   </div>
 </div>
-<script src='data.js?v=4'></script>
-<script src='game.js?v=4'></script>
-<script src='claw.js?v=4'></script>
+<div class='modal' id='inv' hidden>
+  <div class='mbox'>
+    <div class='mhead'><b>내 장비 인벤토리</b><span id='invCount'></span><button id='invClose' class='main sm'>닫기</button></div>
+    <div class='dex' style='margin:0;max-height:60vh;overflow:auto'><ul id='invList'></ul></div>
+  </div>
+</div>
+<script src='data.js?v=5'></script>
+<script src='game.js?v=5'></script>
+<script src='claw.js?v=5'></script>
 </body>
 </html>

@@ -4,6 +4,7 @@
   window.addEventListener('error', e => { const m = $('gmsg'); if (m) m.textContent = '오류: ' + e.message; });
   const COST = 150, RATE = [0.8, 0.55, 0.35, 0.2], RN = ['', '일반', '레어', '에픽', '전설'];
   const RC = ['#9ca3af', '#60a5fa', '#c084fc', '#fbbf24'];
+  const TYPE = {rod: '낚시대', bob: '찌', bait: '미끼'};
   const CHUTE = {x: 310, y: 256};
   const GEAR = [
     {type:'rod', n:'목 낚시대', e:'🎣', r:1, b:100}, {type:'rod', n:'강철 낚시대', e:'🎣', r:2, b:200},
@@ -29,9 +30,18 @@
   }
 
   let items = [], cs = {x: 180, y: 40, dir: 1, phase: 'move', target: null, open: 14, shake: 0};
-  let playing = false, parts = [], reveal = null;
+  let playing = false, parts = [], reveal = null, inv = {};
   let msg = '코인 150으로 한 번 도전해 보세요';
   const setMsg = m => { msg = m; $('gmsg').textContent = m; };
+
+  function renderInv() {
+    const owned = GEAR.filter(x => inv[x.n]).length;
+    $('invCount').textContent = owned + ' / ' + GEAR.length;
+    $('invList').innerHTML = GEAR.map(x => {
+      const have = inv[x.n];
+      return `<li>${have ? x.e + ' ' + x.n : '❔ ???'}<br><small>${have ? RN[x.r] + ' · ' + TYPE[x.type] + ' · x' + have : RN[x.r] + ' · ' + TYPE[x.type]}</small></li>`;
+    }).join('');
+  }
 
   function burst(x, y, c, n) {
     for (let i = 0; i < n; i++) parts.push({x, y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5 - 1.5, life: 1, c});
@@ -58,6 +68,7 @@
     playing = false; cs.phase = 'move'; cs.target = null;
     if (gear) {
       const eq = window.FG.give(gear);
+      inv[gear.n] = (inv[gear.n] || 0) + 1;
       reveal = {t: performance.now(), gear, eq};
       setMsg(gear.e + ' ' + gear.n + ' 획득! (' + RN[gear.r] + ')');
       burst(180, 150, RC[gear.r - 1], 40);
@@ -172,7 +183,7 @@
         g.shadowColor = c; g.shadowBlur = 30; g.fillStyle = '#111827';
         rr(-110, -80, 220, 160, 16); g.fill();
         g.shadowBlur = 0; g.strokeStyle = c; g.lineWidth = 3; g.stroke();
-        g.textAlign = 'center'; g.fillStyle = c; g.font = 'bold 13px sans-serif'; g.fillText(RN[reveal.gear.r].toUpperCase() + ' · ' + reveal.gear.type.toUpperCase(), 0, -56);
+        g.textAlign = 'center'; g.fillStyle = c; g.font = 'bold 13px sans-serif'; g.fillText(RN[reveal.gear.r].toUpperCase() + ' · ' + TYPE[reveal.gear.type], 0, -56);
         g.font = '52px serif'; g.textBaseline = 'middle'; g.fillText(reveal.gear.e, 0, -8);
         g.fillStyle = '#f9fafb'; g.font = 'bold 16px sans-serif'; g.fillText(reveal.gear.n, 0, 40);
         g.fillStyle = reveal.eq ? '#86efac' : '#9ca3af'; g.font = '12px sans-serif'; g.fillText(reveal.eq ? '장착 완료!' : '보관했어요', 0, 62);
@@ -193,5 +204,8 @@
   $('gacha').addEventListener('click', e => { if (e.target.id === 'gacha') $('gacha').hidden = true; });
   $('gachaBtn').addEventListener('click', () => { $('gacha').hidden = false; $('gmsg').textContent = msg; });
   $('gClose').addEventListener('click', () => { $('gacha').hidden = true; });
+  $('invBtn').addEventListener('click', () => { renderInv(); $('inv').hidden = false; });
+  $('inv').addEventListener('click', e => { if (e.target.id === 'inv') $('inv').hidden = true; });
+  $('invClose').addEventListener('click', () => { $('inv').hidden = true; });
   requestAnimationFrame(loop);
 })();
