@@ -15,6 +15,7 @@ h1{margin:8px 0 12px;font-size:24px}
 .tabs button.active{background:#f5b700;color:#222;font-weight:700}
 .btn:disabled{opacity:.5;cursor:default}
 .btn.small{padding:6px 10px;font-size:12px}
+.btn.active{background:#f5b700;color:#222;font-weight:700}
 .panel{display:none;width:100%;max-width:520px;text-align:center}
 .panel.active{display:block}
 .missions{width:100%;max-width:520px;background:#222841;border-radius:14px;padding:12px 16px;margin-bottom:6px}
@@ -74,12 +75,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor
 </div>
 
 <div id="scratchPanel" class="panel">
-  <p class="info">첫 복권은 무료예요. 긁어서 확인한 뒤 다음 복권을 1,000원에 살 수 있어요.</p>
+  <p class="info">첫 복권(행운 복권)은 무료예요. 종류를 고른 뒤 다음 복권을 구매하세요.</p>
+  <div class="row" id="typeRow"></div>
   <div class="scratch-wrap">
     <canvas id="scratchCanvas" width="600" height="280"></canvas>
   </div>
   <div class="msg" id="scratchMsg"></div>
-  <button class="btn" id="newTicket">새 복권 (1,000원)</button>
+  <button class="btn" id="newTicket"></button>
 </div>
 
 <script>
@@ -97,13 +99,20 @@ function shuffle(arr){
 const START = 1000000;
 const COST = 1000;
 const LOTTO_PRIZE = {1: 100000000, 2: 5000000, 3: 1500000, 4: 50000, 5: 5000};
-const SCRATCH = [
-  {v: 0, w: 60},
-  {v: 1000, w: 25},
-  {v: 5000, w: 10},
-  {v: 50000, w: 4},
-  {v: 1000000, w: 1}
+
+const TICKETS = [
+  {id: 'basic', name: '행운 복권', cost: 1000, color: '#b8bcc6', text: '#6b6f7a', prizes: [
+    {v: 0, w: 60}, {v: 1000, w: 25}, {v: 5000, w: 10}, {v: 50000, w: 4}, {v: 1000000, w: 1}
+  ]},
+  {id: 'gold', name: '황금 복권', cost: 5000, color: '#d4af37', text: '#5c4a10', prizes: [
+    {v: 0, w: 55}, {v: 5000, w: 25}, {v: 20000, w: 12}, {v: 100000, w: 6}, {v: 5000000, w: 2}
+  ]},
+  {id: 'diamond', name: '다이아 복권', cost: 10000, color: '#9bd7f5', text: '#1e4a63', prizes: [
+    {v: 0, w: 50}, {v: 10000, w: 25}, {v: 50000, w: 15}, {v: 300000, w: 7}, {v: 10000000, w: 3}
+  ]}
 ];
+const ticketById = id => TICKETS.find(t => t.id === id);
+
 const hit = (s, n) => s.bestRank > 0 && s.bestRank <= n;
 const MISSIONS = [
   {id: 'm1', title: '첫 추첨 해보기', reward: 10000, ok: s => s.draws >= 1},
@@ -113,11 +122,14 @@ const MISSIONS = [
   {id: 'm5', title: '로또 3등 이상 당첨', reward: 300000, ok: s => hit(s, 3)},
   {id: 'm6', title: '로또 2등 이상 당첨', reward: 1000000, ok: s => hit(s, 2)},
   {id: 'm7', title: '로또 1등 당첨', reward: 10000000, ok: s => hit(s, 1)},
-  {id: 'm8', title: '잔액 200만원 돌파', reward: 50000, ok: s => s.maxMoney >= 2000000}
+  {id: 'm8', title: '잔액 200만원 돌파', reward: 50000, ok: s => s.maxMoney >= 2000000},
+  {id: 'm9', title: '황금 복권 긁기', reward: 30000, ok: s => s.byType.gold >= 1},
+  {id: 'm10', title: '다이아 복권 긁기', reward: 100000, ok: s => s.byType.diamond >= 1}
 ];
 
 function newState(){
-  return {money: START, maxMoney: START, draws: 0, scratches: 0, bestRank: 0, done: {}};
+  return {money: START, maxMoney: START, draws: 0, scratches: 0, bestRank: 0,
+    byType: {basic: 0, gold: 0, diamond: 0}, done: {}};
 }
 let S = newState();
 
@@ -247,27 +259,30 @@ const cv = $('#scratchCanvas');
 const ctx = cv.getContext('2d');
 let scratching = false;
 let pending = true;
+let card = ticketById('basic');
 let cardPrize = 0;
+let selType = 'basic';
 
-function pickPrize(){
-  const total = SCRATCH.reduce((s, x) => s + x.w, 0);
+function pickPrize(t){
+  const total = t.prizes.reduce((s, x) => s + x.w, 0);
   let r = Math.random() * total;
-  for(const x of SCRATCH){
+  for(const x of t.prizes){
     if((r -= x.w) < 0) return x.v;
   }
   return 0;
 }
-function resetScratch(){
-  cardPrize = pickPrize();
+function resetScratch(t){
+  card = t;
+  cardPrize = pickPrize(t);
   pending = true;
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#b8bcc6';
+  ctx.fillStyle = t.color;
   ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.fillStyle = '#6b6f7a';
+  ctx.fillStyle = t.text;
   ctx.font = 'bold 40px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('여기를 긁으세요', cv.width / 2, cv.height / 2);
+  ctx.fillText(`${t.name} 긁기`, cv.width / 2, cv.height / 2);
   cv.style.display = 'block';
   $('#scratchMsg').textContent = '';
 }
@@ -299,7 +314,8 @@ function checkScratch(){
     cv.style.display = 'none';
     S.money += cardPrize;
     S.scratches++;
-    $('#scratchMsg').textContent = cardPrize ? `🎉 ${won(cardPrize)} 당첨!` : '아쉽지만 꽝입니다';
+    S.byType[card.id]++;
+    $('#scratchMsg').textContent = cardPrize ? `🎉 ${card.name} ${won(cardPrize)} 당첨!` : `아쉽지만 ${card.name}은 꽝입니다`;
     afterAction();
   }
 }
@@ -312,11 +328,34 @@ cv.addEventListener('pointermove', e => { if(scratching) scratchAt(e); });
 cv.addEventListener('pointerup', () => { scratching = false; checkScratch(); });
 cv.addEventListener('pointercancel', () => { scratching = false; checkScratch(); });
 $('#newTicket').onclick = () => {
-  if(pending || S.money < COST) return;
-  S.money -= COST;
-  resetScratch();
+  const t = ticketById(selType);
+  if(pending || S.money < t.cost) return;
+  S.money -= t.cost;
+  resetScratch(t);
   afterAction();
 };
+function renderTypes(){
+  const row = $('#typeRow');
+  if(!row.children.length){
+    TICKETS.forEach(t => {
+      const b = document.createElement('button');
+      b.className = 'btn type-btn';
+      b.dataset.id = t.id;
+      b.onclick = () => {
+        if(pending) return;
+        selType = t.id;
+        render();
+      };
+      row.appendChild(b);
+    });
+  }
+  row.querySelectorAll('.type-btn').forEach(b => {
+    const t = ticketById(b.dataset.id);
+    b.textContent = `${t.name} ${won(t.cost)}`;
+    b.classList.toggle('active', b.dataset.id === selType);
+    b.disabled = pending;
+  });
+}
 
 /* 화면 갱신 */
 function render(){
@@ -327,7 +366,10 @@ function render(){
   const list = [...picks].sort((a, b) => a - b).join(', ');
   $('#pickInfo').textContent = `선택한 번호 ${picks.size}/6  ${list}`;
   $('#drawBtn').disabled = picks.size !== 6 || drawing || broke;
-  $('#newTicket').disabled = pending || broke;
+  renderTypes();
+  const t = ticketById(selType);
+  $('#newTicket').textContent = `${t.name} 구매 (${won(t.cost)})`;
+  $('#newTicket').disabled = pending || S.money < t.cost;
 }
 
 /* 처음부터 */
@@ -339,12 +381,13 @@ $('#resetAll').onclick = () => {
   $('#balls').innerHTML = '';
   $('#result').textContent = '';
   $('#toast').textContent = '';
-  resetScratch();
+  selType = 'basic';
+  resetScratch(ticketById('basic'));
   render();
 };
 
 /* 초기화 */
-resetScratch();
+resetScratch(ticketById('basic'));
 render();
 </script>
 </body>
