@@ -46,7 +46,7 @@
 <div class="modal" id="modal"><div class="dialog"><div class="row"><h2 id="modalTitle">항공사 유치</h2><button class="btn secondary" id="closeModal">닫기</button></div><div id="modalBody"></div></div></div>
 <script>
 (()=>{
-const initial=()=>({day:1,cash:500,rep:50,satisfaction:75,terminal:1,runway:1,parking:1,service:1,security:1,staff:24,airlines:[{name:"재웅항공",route:"서울–제주",flights:4,fee:0.34,contract:0.8},{name:"코리아윙",route:"서울–부산",flights:2,fee:0.3,contract:0.5}],contracts:0,paid:0,lastProfit:0,lastLedger:null,logs:["DAY 1 · JW 국제공항 운영을 시작했습니다.","초기 자본 ₩500억이 입금되었습니다."],history:[]});
+const initial=()=>({day:1,cash:500,rep:50,satisfaction:75,terminal:1,runway:1,parking:1,service:1,security:1,staff:24,airlines:[{name:"재웅항공",route:"서울–제주",flights:4,fee:0.34,contract:0.8},{name:"코리아윙",route:"서울–부산",flights:2,fee:0.3,contract:0.5}],contracts:1.3,paid:0,lastProfit:0,lastLedger:null,logs:["DAY 1 · JW 국제공항 운영을 시작했습니다.","초기 자본 ₩500억이 입금되었습니다."],history:[]});
 let s;try{s=JSON.parse(localStorage.getItem("jwAirportSave"))||initial()}catch(e){s=initial()}
 const $=id=>document.getElementById(id), money=n=>"₩"+(Math.round(n*100)/100).toLocaleString("ko-KR")+"억", num=n=>Math.round(n).toLocaleString("ko-KR");
 const capacity=()=>500+(s.terminal-1)*400;
@@ -80,9 +80,9 @@ modal("항공사 유치",'<p class="sub">신규 노선은 계약 즉시 개설�
 $("modalBody").querySelectorAll("[data-air]").forEach(b=>b.onclick=()=>{let a=choices[Number(b.dataset.air)];if(s.airlines.some(x=>x.name===a.name)){alert("이미 계약한 항공사입니다.");return}if(flightTotal()+a.flights>maxFlights()){alert("현재 활주로 처리 능력이 부족합니다. 활주로를 확장하세요.");return}s.airlines.push({name:a.name,route:a.route,flights:a.flights,fee:a.fee,contract:a.cost});s.contracts+=a.cost;log(a.name+" 노선 계약 체결 · 계약금 "+money(a.cost)+" (미지급)");$("modal").classList.remove("show");render()})}
 document.querySelectorAll("[data-upgrade]").forEach(b=>b.onclick=()=>upgrade(b.dataset.upgrade));
 $("openAirline").onclick=airlineModal;$("closeModal").onclick=()=>$("modal").classList.remove("show");$("modal").onclick=e=>{if(e.target===$("modal"))$("modal").classList.remove("show")};
-$("nextDay").onclick=()=>{let e=estimate();if(s.cash+e.profit<0){alert("운영 후 현금이 마이너스가 됩니다. 비용을 줄이거나 수익을 늘리세요.");return}let paidContracts=s.airlines.reduce((a,b)=>a+(b.contract||0),0);let net=e.profit;s.cash+=net;s.paid+=Math.max(0,paidContracts);s.airlines.forEach(a=>a.contract=0);s.lastProfit=net;
+$("nextDay").onclick=()=>{let e=estimate();if(s.cash+e.profit<0){alert("운영 후 현금이 마이너스가 됩니다. 비용을 줄이거나 수익을 늘리세요.");return}let paidContracts=s.airlines.reduce((a,b)=>a+(b.contract||0),0);let net=e.profit+paidContracts;s.cash+=net;s.paid+=Math.max(0,paidContracts);s.airlines.forEach(a=>a.contract=0);s.lastProfit=net;
 let satisfactionDelta=(e.load>.85?-3:e.load<.35?1:2)+(s.service-1);s.satisfaction=Math.max(25,Math.min(100,s.satisfaction+satisfactionDelta));s.rep=Math.max(0,Math.min(100,s.rep+(net>0?1:-2)+(s.satisfaction>85?1:0)));
-s.lastLedger=[["매출",e.revenue],["운영비",e.upkeep],["순이익",net],["계약금 실제 지급",paidContracts]];s.history.unshift({day:s.day,profit:net,pax:e.pax});s.history=s.history.slice(0,30);log("일일 정산 완료 · 승객 "+num(e.pax)+"명 · 순이익 "+money(net));s.day++;render()};
+s.lastLedger=[["운영 매출",e.revenue],["운영비",e.upkeep],["노선 계약금 수령",paidContracts],["당일 순증감",net]];s.history.unshift({day:s.day,profit:net,pax:e.pax});s.history=s.history.slice(0,30);log("일일 정산 완료 · 승객 "+num(e.pax)+"명 · 순증감 "+money(net));s.day++;render()};
 $("save").onclick=()=>{save();alert("게임을 저장했습니다.")};
 render();
 })();
