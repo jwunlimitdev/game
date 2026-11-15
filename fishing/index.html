@@ -10,6 +10,7 @@
 <header><a href='../'>← 홈</a><h1>조용한 낚시터</h1><span></span></header>
 <canvas id='c' width='360' height='480'></canvas>
 <div class='hud'><span>코인 <b id='coins'>0</b></span><span>콤보 <b id='combo'>0</b> · 최고 <b id='best'>0</b></span></div>
+<div class='eqline' id='eq'></div>
 <div class='sbox'>
   <div class='sinfo' id='stageInfo'></div>
   <div class='sbar'><i id='stageBar'></i></div>
@@ -23,12 +24,24 @@
   <button id='up' class='main'></button>
   <button id='rod' class='main'></button>
 </div>
+<div class='btns'>
+  <button id='gachaBtn' class='main'>🎰 장비 뽑기</button>
+</div>
 <div class='dex'>
   <div class='dex-title'><span>도감</span><span id='dexCount'></span></div>
   <div class='bar'><i id='dexBar'></i></div>
   <ul id='dexList'></ul>
 </div>
+<div class='modal' id='gacha' hidden>
+  <div class='mbox'>
+    <div class='mhead'><b>장비 뽑기</b><button id='gClose' class='main sm'>닫기</button></div>
+    <canvas id='claw' width='360' height='300'></canvas>
+    <div id='gmsg'></div>
+    <button id='gStart' class='main act'>뽑기 (150코인)</button>
+  </div>
+</div>
 <script src='data.js'></script>
 <script src='game.js'></script>
+<script src='claw.js'></script>
 </body>
 </html>

@@ -4,19 +4,21 @@
   const COST = 150, RATE = [0.8, 0.55, 0.35, 0.2], RN = ['', '일반', '레어', '에픽', '전설'];
   const RC = ['#9ca3af', '#60a5fa', '#c084fc', '#fbbf24'];
   const GEAR = [
-    {type:'rod', n:'목 낚시대', e:'🎣', r:1, b:100}, {type:'rod', n:'강철 낚시대', e:'🎣', r:2, b:200},
-    {type:'rod', n:'fd3금 낚시대', e:'🎣', r:3, b:300}, {type:'rod', n:'용왕 낚시대', e:'🔱', r:4, b:500},
+    {type:'rod', n:'목 낚싯대', e:'🎣', r:1, b:100}, {type:'rod', n:'강철 낚싯대', e:'🎣', r:2, b:200},
+    {type:'rod', n:'황금 낚싯대', e:'🎣', r:3, b:300}, {type:'rod', n:'용왕 낚싯대', e:'🔱', r:4, b:500},
     {type:'bait', n:'지렁이', e:'🪱', r:1, b:1}, {type:'bait', n:'새우 미끼', e:'🦐', r:2, b:2},
     {type:'bait', n:'루어', e:'✨', r:3, b:3}, {type:'bait', n:'전설 미끼', e:'🌟', r:4, b:6},
     {type:'bob', n:'나무 찌', e:'🟠', r:1, b:5}, {type:'bob', n:'야광 찌', e:'🟢', r:2, b:10},
     {type:'bob', n:'수정 찌', e:'🔵', r:3, b:15}, {type:'bob', n:'우주 찌', e:'🟣', r:4, b:25}
   ];
   const pickGear = () => {
-    const r = [1, 2, 3, 4][(() => { let x = Math.random() * 100; return x < 50 ? 0 : x < 80 ? 1 : x < 95 ? 2 : 3; })()];
-    const list = GEAR.filter(x => x.r === r);
+    const x = Math.random() * 100;
+    const r = x < 50 ? 1 : x < 80 ? 2 : x < 95 ? 3 : 4;
+    const list = GEAR.filter(item => item.r === r);
     return list[Math.floor(Math.random() * list.length)];
   };
-  let items = [], cs = {x: 180, y: 40, dir: 1, phase: 'move', target: null}, playing = false, msg = '코인 150으로 한 번 도전해 보세요';
+  let items = [], cs = {x: 180, y: 40, dir: 1, phase: 'move', target: null}, playing = false;
+  let msg = '코인 150으로 한 번 도전해 보세요';
 
   function start() {
     if (playing) return;
@@ -88,11 +90,11 @@
     g.fillStyle = '#374151'; g.fillRect(270, 258, 80, 34);
     g.fillStyle = '#fbbf24'; g.font = 'bold 11px sans-serif'; g.fillText('배출구', 310, 275);
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    requestAnimationFrame(loop);
   }
 
   function loop() {
     update(); draw();
+    requestAnimationFrame(loop);
   }
 
   cv.addEventListener('click', drop);
