@@ -5,18 +5,22 @@ header{width:100%;max-width:420px;display:flex;justify-content:space-between;ali
 header a{color:var(--muted);text-decoration:none;font-size:13px}
 h1{font-size:18px;margin:0}
 canvas{width:100%;max-width:420px;border-radius:18px;border:1px solid var(--line);cursor:pointer;touch-action:manipulation}
-.hud{width:100%;max-width:420px;display:flex;justify-content:space-between;margin:12px 0 8px;font-size:13px;color:var(--muted)}
+.hud{width:100%;max-width:420px;display:flex;justify-content:space-between;margin:12px 0 6px;font-size:13px;color:var(--muted)}
 .hud b{color:var(--text)}
-#msg{min-height:44px;width:100%;max-width:420px;text-align:center;font-size:15px;font-weight:700;line-height:1.5}
-.places{display:flex;gap:6px;width:100%;max-width:420px;margin:8px 0}
-.pl{flex:1;min-height:40px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
-.pl.on{color:#081226;background:linear-gradient(110deg,#91bdff,#71e3ed);border:0}
-.btns{display:flex;gap:10px;width:100%;max-width:420px;margin-top:6px}
-button.main{flex:1;min-height:48px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);font:inherit;font-weight:800;cursor:pointer}
+.sbox{width:100%;max-width:420px}
+.sinfo{font-size:12px;color:var(--muted);margin-bottom:5px}
+.sbar,.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.sbar i,.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+#msg{min-height:44px;width:100%;max-width:420px;text-align:center;font-size:15px;font-weight:700;line-height:1.5;margin-top:8px}
+.stages{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;width:100%;max-width:420px}
+.stg{aspect-ratio:1;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--muted);font:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:0}
+.stg.on{color:#081226;background:linear-gradient(110deg,#91bdff,#71e3ed);border:0}
+.stg.cl{color:#a8f0ce}
+.stg:disabled{opacity:.3;cursor:default}
+.btns{display:flex;gap:10px;width:100%;max-width:420px;margin-top:8px}
+button.main{flex:1;min-height:48px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);font:inherit;font-weight:800;cursor:pointer;font-size:13px}
 button.act{color:#081226;background:linear-gradient(110deg,#91bdff,#71e3ed);border:0}
 .dex{width:100%;max-width:420px;margin:18px 0 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:13px}
 .dex-title{display:flex;justify-content:space-between;color:var(--muted);margin-bottom:10px}
-.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:12px}
-.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
-.dex ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.dex li{padding:6px 8px;border-radius:9px;background:rgba(255,255,255,.04);font-size:12px}
+.dex ul{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.dex li{padding:5px 6px;border-radius:8px;background:rgba(255,255,255,.04);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
