@@ -1,237 +1,27 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang='ko'>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover'>
 <title>조용한 낚시터</title>
-<style>
-  :root{color-scheme:dark;--bg:#0b1020;--panel:#131b30;--line:rgba(180,198,235,.14);--text:#f4f7ff;--muted:#a5b0c8;--accent:#5eead4}
-  *{box-sizing:border-box}
-  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:Pretendard,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;align-items:center;padding:env(safe-area-inset-top,0) 14px env(safe-area-inset-bottom,0)}
-  header{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;padding:16px 0}
-  header a{color:var(--muted);text-decoration:none;font-size:13px}
-  h1{font-size:18px;margin:0}
-  canvas{width:100%;max-width:420px;border-radius:18px;border:1px solid var(--line);cursor:pointer;touch-action:manipulation}
-  .hud{width:100%;max-width:420px;display:flex;justify-content:space-between;margin:12px 0 8px;font-size:13px;color:var(--muted)}
-  .hud b{color:var(--text)}
-  #msg{min-height:44px;width:100%;max-width:420px;text-align:center;font-size:15px;font-weight:700;line-height:1.5}
-  .places{display:flex;gap:6px;width:100%;max-width:420px;margin:8px 0}
-  .pl{flex:1;min-height:40px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
-  .pl.on{color:#081226;background:linear-gradient(110deg,#91bdff,#71e3ed);border:0}
-  .btns{display:flex;gap:10px;width:100%;max-width:420px;margin-top:6px}
-  button.main{flex:1;min-height:48px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);font:inherit;font-weight:800;cursor:pointer}
-  button.act{color:#081226;background:linear-gradient(110deg,#91bdff,#71e3ed);border:0}
-  .dex{width:100%;max-width:420px;margin:18px 0 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:13px}
-  .dex-title{display:flex;justify-content:space-between;color:var(--muted);margin-bottom:10px}
-  .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:12px}
-  .bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
-  .dex ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .dex li{padding:6px 8px;border-radius:9px;background:rgba(255,255,255,.04);font-size:12px}
-</style>
+<link rel='stylesheet' href='style.css'>
 </head>
 <body>
-<header><a href="../">← 홈</a><h1>조용한 낚시터</h1><span></span></header>
-<canvas id="c" width="360" height="480"></canvas>
-<div class="hud"><span>코인 <b id="coins">0</b></span><span>자동 낚시 Lv <b id="lv">0</b></span></div>
-<div id="msg"></div>
-<div class="places" id="places"></div>
-<div class="btns">
-  <button id="act" class="main act">던지기</button>
-  <button id="up" class="main"></button>
+<header><a href='../'>← 홈</a><h1>조용한 낚시터</h1><span></span></header>
+<canvas id='c' width='360' height='480'></canvas>
+<div class='hud'><span>코인 <b id='coins'>0</b></span><span>자동 낚시 Lv <b id='lv'>0</b></span></div>
+<div id='msg'></div>
+<div class='places' id='places'></div>
+<div class='btns'>
+  <button id='act' class='main act'>던지기</button>
+  <button id='up' class='main'></button>
 </div>
-<div class="dex">
-  <div class="dex-title"><span>도감</span><span id="dexCount"></span></div>
-  <div class="bar"><i id="dexBar"></i></div>
-  <ul id="dexList"></ul>
+<div class='dex'>
+  <div class='dex-title'><span>도감</span><span id='dexCount'></span></div>
+  <div class='bar'><i id='dexBar'></i></div>
+  <ul id='dexList'></ul>
 </div>
-<script>
-(() => {
-  const cv = document.getElementById('c'), g = cv.getContext('2d');
-  const $ = id => document.getElementById(id);
-  const PLACES = [
-    {n:'고요한 호수', e:'🏞️', cost:0, sky:['#274b6e','#9fd8c2'], water:['#2e8a74','#0f3d3a'], fish:[
-      {n:'붕어', e:'🐟', w:50, v:10, win:700},
-      {n:'잉어', e:'🎏', w:30, v:25, win:500},
-      {n:'미꾸라지', e:'🪱', w:40, v:8, win:800},
-      {n:'메기', e:'🐡', w:15, v:40, win:400},
-      {n:'가재', e:'🦞', w:12, v:50, win:350},
-      {n:'금붕어', e:'🐠', w:8, v:80, win:300},
-      {n:'전설 용잃어', e:'🐉', w:2, v:300, win:150}
-    ]},
-    {n:'푸른 바다', e:'🌊', cost:800, sky:['#1d3f7a','#7cc4ef'], water:['#1f7aa8','#0a2f4f'], fish:[
-      {n:'고등어', e:'🐟', w:50, v:15, win:650},
-      {n:'전갱이', e:'🐠', w:35, v:20, win:550},
-      {n:'오징어', e:'🦑', w:25, v:40, win:450},
-      {n:'문어', e:'🐙', w:15, v:60, win:380},
-      {n:'참치', e:'🐋', w:8, v:120, win:280},
-      {n:'상어', e:'🦈', w:4, v:200, win:200},
-      {n:'인어의 보물', e:'🧜', w:1, v:500, win:120}
-    ]},
-    {n:'심해 동굴', e:'🌋', cost:3000, sky:['#050a18','#1b1f3b'], water:['#0b2b3f','#02060d'], fish:[
-      {n:'심해 아귀', e:'🐡', w:40, v:70, win:500},
-      {n:'해파리', e:'🪼', w:30, v:60, win:450},
-      {n:'촉손 문어', e:'🐙', w:20, v:120, win:350},
-      {n:'발광어', e:'✨', w:12, v:200, win:260},
-      {n:'유령 고래', e:'👻', w:6, v:400, win:180},
-      {n:'크라켄의 알', e:'🥚', w:2, v:900, win:100}
-    ]}
-  ];
-  const TOTAL = PLACES.reduce((s, p) => s + p.fish.length, 0);
-  const stars = Array.from({length: 40}, () => ({x: Math.random() * 360, y: Math.random() * 200, p: Math.random() * 6}));
-  let coins = 0, autoLv = 0, pi = 0, unlocked = [true, false, false];
-  let st = 'idle', cur = null, timer = null, lastAuto = 0, dex = {}, floats = [], react = null;
-  let msg = '찌를 던져 보세요';
-  const P = () => PLACES[pi];
-  const autoInterval = () => Math.max(3000, 12000 - autoLv * 2000);
-  const upCost = () => 100 * (autoLv + 1) * (autoLv + 1);
-
-  function pick() {
-    const f = P().fish, tot = f.reduce((s, x) => s + x.w, 0);
-    let r = Math.random() * tot;
-    for (const x of f) { r -= x.w; if (r < 0) return x; }
-    return f[0];
-  }
-
-  function cast() {
-    st = 'wait'; msg = '찌가 물 위에 떠 있어요...';
-    timer = setTimeout(() => {
-      cur = pick(); st = 'bite'; msg = '!! 지금 챔질!';
-      timer = setTimeout(() => {
-        st = 'idle'; msg = '놓쳤어요 😢';
-        react = {e: '💦', until: performance.now() + 900}; render();
-      }, cur.win);
-      render();
-    }, 1500 + Math.random() * 2500);
-    render();
-  }
-
-  function hook() {
-    if (st === 'wait') {
-      clearTimeout(timer); st = 'idle'; msg = '너무 일찍 챔질했어요!';
-      react = {e: '😅', until: performance.now() + 900};
-    } else if (st === 'bite') {
-      clearTimeout(timer); catchFish(cur, true);
-    }
-    render();
-  }
-
-  function catchFish(f, manual) {
-    st = 'idle'; coins += f.v; dex[f.n] = (dex[f.n] || 0) + 1;
-    msg = (manual ? '' : '자동 낚시: ') + f.e + ' ' + f.n + ' 획득! +' + f.v;
-    floats.push({t: performance.now(), text: '+' + f.v, color: f.v >= 200 ? '#fde047' : '#bbf7d0'});
-    react = {e: f.v >= 200 ? '🤩' : '😆', until: performance.now() + 1000};
-    render();
-  }
-
-  function tap() { st === 'idle' ? cast() : hook(); }
-
-  function switchPlace(i) {
-    if (st !== 'idle' || i === pi) return;
-    if (!unlocked[i]) {
-      if (coins < PLACES[i].cost) { msg = '코인이 부족해요 (필요: ' + PLACES[i].cost + ')'; return render(); }
-      coins -= PLACES[i].cost; unlocked[i] = true;
-    }
-    pi = i; msg = PLACES[i].e + ' ' + PLACES[i].n + '에 도착했어요!';
-    render();
-  }
-
-  function upgrade() {
-    if (autoLv >= 5) { msg = '자동 낚시가 최대 레벨이에요'; return render(); }
-    if (coins < upCost()) { msg = '코인이 부족해요 (필요: ' + upCost() + ')'; return render(); }
-    coins -= upCost(); autoLv++; msg = '자동 낚시 Lv ' + autoLv + ' 달성!'; render();
-  }
-
-  function render() {
-    $('coins').textContent = coins;
-    $('lv').textContent = autoLv;
-    $('msg').textContent = msg;
-    $('act').textContent = st === 'idle' ? '던지기' : '챔질!';
-    $('up').textContent = autoLv >= 5 ? '최대 레벨' : '자동 낚시 업그레이드 (' + upCost() + ')';
-    $('places').innerHTML = PLACES.map((p, i) =>
-      '<button class="pl' + (i === pi ? ' on' : '') + '" data-i="' + i + '">' +
-      (unlocked[i] ? p.e + ' ' + p.n : '🔒 ' + p.n + ' · ' + p.cost) + '</button>').join('');
-    const n = Object.keys(dex).length;
-    $('dexCount').textContent = n + ' / ' + TOTAL;
-    $('dexBar').style.width = (n / TOTAL * 100) + '%';
-    $('dexList').innerHTML = PLACES.flatMap(p => p.fish).map(f =>
-      '<li>' + (dex[f.n] ? f.e + ' ' + f.n + ' x' + dex[f.n] : '???') + '</li>').join('');
-  }
-
-  function draw(t) {
-    const now = performance.now(), W = cv.width, H = cv.height, WATER = 290, p = P();
-    const sky = g.createLinearGradient(0, 0, 0, WATER);
-    sky.addColorStop(0, p.sky[0]); sky.addColorStop(1, p.sky[1]);
-    g.fillStyle = sky; g.fillRect(0, 0, W, WATER);
-    if (pi === 2) {
-      stars.forEach(s => { g.fillStyle = 'rgba(255,255,255,' + (.3 + .3 * Math.sin(t / 500 + s.p)) + ')'; g.fillRect(s.x, s.y, 2, 2); });
-    } else {
-      g.fillStyle = pi === 0 ? '#ffe08a' : '#fff3b0';
-      g.beginPath(); g.arc(300, 58, 24, 0, Math.PI * 2); g.fill();
-      g.fillStyle = 'rgba(255,255,255,.7)';
-      for (let k = 0; k < 3; k++) {
-        const x = ((t / 60 + k * 140) % (W + 120)) - 60;
-        g.beginPath(); g.arc(x, 110 + k * 22, 16, 0, Math.PI * 2); g.arc(x + 18, 104 + k * 22, 20, 0, Math.PI * 2); g.arc(x + 40, 110 + k * 22, 15, 0, Math.PI * 2); g.fill();
-      }
-    }
-    const wg = g.createLinearGradient(0, WATER, 0, H);
-    wg.addColorStop(0, p.water[0]); wg.addColorStop(1, p.water[1]);
-    g.fillStyle = wg; g.fillRect(0, WATER, W, H - WATER);
-    g.strokeStyle = 'rgba(255,255,255,.15)'; g.lineWidth = 1.5;
-    for (let i = 0; i < 4; i++) {
-      g.beginPath();
-      for (let x = 0; x <= W; x += 6) g.lineTo(x, WATER + 14 + i * 36 + Math.sin(x / 26 + t / 700 + i) * 4);
-      g.stroke();
-    }
-    if (pi === 2) {
-      for (let i = 0; i < 12; i++) {
-        g.fillStyle = 'rgba(103,232,249,' + (.3 + .4 * Math.sin(t / 300 + i)) + ')';
-        g.beginPath(); g.arc((i * 67 + t / 40) % W, WATER + 25 + (i * 53) % (H - WATER - 40), 3, 0, Math.PI * 2); g.fill();
-      }
-    }
-    const cy = WATER - 70 + Math.sin(t / 400) * 2;
-    g.textAlign = 'center'; g.font = '54px serif'; g.fillText('🧑‍🌾', 60, cy);
-    if (react && now < react.until) { g.font = '26px serif'; g.fillText(react.e, 60, cy - 58); }
-    const bx = 230, bob = Math.sin(t / 300) * 3;
-    const by = st === 'idle' ? WATER - 4 + bob : WATER + 8 + bob + (st === 'bite' ? Math.sin(t / 50) * 6 : 0);
-    g.strokeStyle = 'rgba(230,240,255,.7)'; g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(104, cy - 12); g.lineTo(bx, by); g.stroke();
-    g.strokeStyle = '#c9a36b'; g.lineWidth = 4;
-    g.beginPath(); g.moveTo(84, cy + 6); g.lineTo(104, cy - 12); g.stroke();
-    g.fillStyle = '#ef4444'; g.beginPath(); g.arc(bx, by, 7, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#fff'; g.beginPath(); g.arc(bx, by - 6, 4, 0, Math.PI * 2); g.fill();
-    if (st === 'bite') { g.fillStyle = '#fbbf24'; g.font = 'bold 40px sans-serif'; g.fillText('!', bx + 14, by - 20); }
-    floats = floats.filter(f => now - f.t < 1000);
-    floats.forEach(f => {
-      const age = now - f.t;
-      g.globalAlpha = 1 - age / 1000; g.fillStyle = f.color; g.font = 'bold 20px sans-serif';
-      g.fillText(f.text, bx, WATER - 30 - age / 25); g.globalAlpha = 1;
-    });
-    g.textAlign = 'left';
-    if (st === 'idle' && autoLv > 0) {
-      const left = Math.max(0, autoInterval() - (now - lastAuto));
-      g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '12px sans-serif';
-      g.fillText('자동 낚시 ' + Math.ceil(left / 1000) + 's', 12, H - 12);
-    }
-    requestAnimationFrame(draw);
-  }
-
-  cv.addEventListener('click', tap);
-  $('act').addEventListener('click', tap);
-  $('up').addEventListener('click', upgrade);
-  $('places').addEventListener('click', e => {
-    const b = e.target.closest('[data-i]');
-    if (b) switchPlace(+b.dataset.i);
-  });
-  setInterval(() => {
-    const now = performance.now();
-    if (autoLv > 0 && st === 'idle' && now - lastAuto >= autoInterval()) {
-      lastAuto = now; catchFish(pick(), false);
-    }
-  }, 250);
-
-  render();
-  requestAnimationFrame(draw);
-})();
-</script>
+<script src='data.js'></script>
+<script src='game.js'></script>
 </body>
 </html>

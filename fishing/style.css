@@ -1,0 +1,22 @@
+:root{color-scheme:dark;--bg:#0b1020;--panel:#131b30;--line:rgba(180,198,235,.14);--text:#f4f7ff;--muted:#a5b0c8;--accent:#5eead4}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:Pretendard,-apple-system,'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;padding:env(safe-area-inset-top,0) 14px env(safe-area-inset-bottom,0)}
+header{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;padding:16px 0}
+header a{color:var(--muted);text-decoration:none;font-size:13px}
+h1{font-size:18px;margin:0}
+canvas{width:100%;max-width:420px;border-radius:18px;border:1px solid var(--line);cursor:pointer;touch-action:manipulation}
+.hud{width:100%;max-width:420px;display:flex;justify-content:space-between;margin:12px 0 8px;font-size:13px;color:var(--muted)}
+.hud b{color:var(--text)}
+#msg{min-height:44px;width:100%;max-width:420px;text-align:center;font-size:15px;font-weight:700;line-height:1.5}
+.places{display:flex;gap:6px;width:100%;max-width:420px;margin:8px 0}
+.pl{flex:1;min-height:40px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.pl.on{color:#081226;background:linear-gradient(110deg,#91bdff,#71e3ed);border:0}
+.btns{display:flex;gap:10px;width:100%;max-width:420px;margin-top:6px}
+button.main{flex:1;min-height:48px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);font:inherit;font-weight:800;cursor:pointer}
+button.act{color:#081226;background:linear-gradient(110deg,#91bdff,#71e3ed);border:0}
+.dex{width:100%;max-width:420px;margin:18px 0 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:13px}
+.dex-title{display:flex;justify-content:space-between;color:var(--muted);margin-bottom:10px}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:12px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.dex ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dex li{padding:6px 8px;border-radius:9px;background:rgba(255,255,255,.04);font-size:12px}
