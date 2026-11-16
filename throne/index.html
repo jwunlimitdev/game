@@ -4,23 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>쓰론폴 (Throne Fall)</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:radial-gradient(#3b4a2e,#141a10);color:#f3ecd8;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:10px}
-h1{margin:6px 0;font-size:22px;letter-spacing:2px;color:#ffd36b}
-#status{font-size:13px;margin:4px 0;text-align:center;line-height:1.6}
-#msg{min-height:40px;font-size:14px;margin:6px 0;color:#ffe9a8;text-align:center;max-width:480px}
-#grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;width:min(92vw,400px);background:#2a1f10;padding:4px;border-radius:8px;box-shadow:0 0 20px #000}
-.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#5b7a3c;font-size:clamp(18px,5vw,26px);cursor:pointer;border-radius:4px;user-select:none}
-.cell:hover{filter:brightness(1.15)}
-.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
-button{padding:9px 12px;font-size:14px;border:0;border-radius:8px;background:#c9a04a;color:#1a1208;font-weight:bold;cursor:pointer}
-button.on{background:#fff3c4;outline:2px solid #ffd36b}
-button.night{background:#4a4f8a;color:#fff}
-button:disabled{opacity:.4;cursor:default}
-select{padding:6px;border-radius:6px;font-size:14px}
-#help{font-size:12px;opacity:.75;margin-top:14px;text-align:center;line-height:1.7;max-width:480px}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <h1>쓰론폴</h1>
@@ -57,125 +41,7 @@ select{padding:6px;border-radius:6px;font-size:14px}
   목표: 10일을 버텨 왕국을 지키세요. 경제에 투자하면 건물이 늘지만, 방어를 소홀히 하면 왕국이 위험해집니다.
 </div>
 
-<script>
-const CASTLE=24; // 7x7 중앙
-const BLD={
-  farm:{n:'농장',i:'🌾',c:20},
-  mine:{n:'광산',i:'⛏️',c:25},
-  barracks:{n:'병영',i:'🏹',c:30},
-  lab:{n:'연구소',i:'🧪',c:40}
-};
-const TECH=[{n:'무기 단련',c:40},{n:'성벽 보강',c:80},{n:'채굴 기술',c:120}];
-const DIFF={easy:{m:.7},normal:{m:1},hard:{m:1.4}};
-const WIN=10;
-let st;
-const $=id=>document.getElementById(id);
-const cnt=t=>st.grid.filter(x=>x===t).length;
-const log=t=>{$('msg').textContent=t;};
-
-function init(diff){
-  st={day:1,gold:80,food:30,soldiers:2,wall:60,maxWall:60,atk:2,tech:0,
-      grid:Array(49).fill(null),sel:(st&&st.sel)||'farm',diff:diff||'normal',over:false};
-  st.grid[CASTLE]='castle';
-  log('1일차 낮입니다. 건물을 짓고 병력을 준비하세요.');
-  render();
-}
-
-function pick(k){st.sel=k;render();}
-
-function tileClick(i){
-  if(st.over||i===CASTLE||st.grid[i])return;
-  const b=BLD[st.sel];
-  if(st.gold<b.c){log('골드가 부족합니다.');return;}
-  st.gold-=b.c; st.grid[i]=st.sel;
-  log(`${b.n}을(를) 건설했습니다.`);
-  render();
-}
-
-function recruit(){
-  if(st.over)return;
-  const cap=3*cnt('barracks');
-  if(cap===0){log('병영을 먼저 지으세요.');return;}
-  if(st.soldiers>=cap){log(`병력 상한(${cap}명)에 도달했습니다.`);return;}
-  if(st.gold<10){log('골드가 부족합니다 (병사 10G).');return;}
-  st.gold-=10; st.soldiers++;
-  log('병사를 모집했습니다.');
-  render();
-}
-
-function repair(){
-  if(st.over)return;
-  if(st.wall>=st.maxWall){log('성벽이 이미 튼튼합니다.');return;}
-  if(st.gold<30){log('골드가 부족합니다 (30G).');return;}
-  st.gold-=30; st.wall=Math.min(st.maxWall,st.wall+20);
-  log('성벽을 보수했습니다.');
-  render();
-}
-
-function research(){
-  if(st.over)return;
-  if(cnt('lab')===0){log('연구소를 먼저 지으세요.');return;}
-  if(st.tech>=TECH.length){log('모든 기술을 연구했습니다.');return;}
-  const t=TECH[st.tech];
-  if(st.gold<t.c){log(`골드가 부족합니다 (${t.c}G).`);return;}
-  st.gold-=t.c; st.tech++;
-  if(st.tech===1)st.atk++;
-  if(st.tech===2){st.maxWall+=30;st.wall+=30;}
-  log(`'${t.n}' 연구 완료!`);
-  render();
-}
-
-function dawn(){
-  const bonus=st.tech>=3?2:0;
-  st.gold+=5+cnt('mine')*(4+bonus);
-  st.food+=cnt('farm')*3-st.soldiers;
-  if(st.food<0){st.soldiers=Math.max(0,st.soldiers+st.food);st.food=0;}
-}
-
-function night(){
-  if(st.over)return;
-  const E=Math.round((2+st.day*1.5)*DIFF[st.diff].m);
-  const power=st.soldiers*st.atk;
-  const killed=Math.min(E,Math.floor(power/3));
-  const rem=E-killed;
-  st.wall-=rem*4;
-  const lost=rem>0?Math.min(st.soldiers,Math.ceil(rem/2)):0;
-  st.soldiers-=lost;
-  st.gold+=killed*3;
-  const report=`밤 ${st.day}: 적 ${E}명 습격 — ${killed}명 격퇴, ${rem}명이 성벽 공격 (병사 ${lost}명 전사).`;
-  if(st.wall<=0){
-    st.wall=0; st.over=true; render();
-    log(report+' 💀 성벽이 무너졌습니다. 왕국 함락!');
-    return;
-  }
-  if(st.day>=WIN){
-    st.over=true; render();
-    log(report+' 🏆 10일을 버티고 왕국을 지켜냈습니다!');
-    return;
-  }
-  st.day++;
-  dawn();
-  render();
-  log(report+` → ${st.day}일차 낮이 밝았습니다.`);
-}
-
-function render(){
-  const g=$('grid'); g.innerHTML='';
-  st.grid.forEach((t,i)=>{
-    const d=document.createElement('div');
-    d.className='cell';
-    d.textContent=t==='castle'?'🏰':(t?BLD[t].i:'');
-    d.onclick=()=>tileClick(i);
-    g.appendChild(d);
-  });
-  $('status').innerHTML=
-    `${st.day}일차 / ${WIN}일 · 골드 ${st.gold} · 식량 ${st.food}<br>`+
-    `병사 ${st.soldiers}명 (상한 ${3*cnt('barracks')}) · 성벽 ${st.wall}/${st.maxWall} · 기술 ${st.tech}/${TECH.length}`;
-  document.querySelectorAll('#palette button').forEach(b=>b.classList.toggle('on',b.dataset.b===st.sel));
-  $('nightBtn').disabled=st.over;
-}
-
-init('normal');
-</script>
+<script src="data.js"></script>
+<script src="game.js"></script>
 </body>
 </html>
