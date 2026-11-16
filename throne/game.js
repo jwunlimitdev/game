@@ -1,12 +1,37 @@
 /* 쓰론폴 게임 로직
  * 낮: 건설, 업그레이드, 병사 모집 / 밤: 적 침입 처리 / 아침: 수입 정산
- * 밸런스 값은 data.js의 [임시] 항목을 따른다.
+ * 화면: 등각(아이소메트릭) 캔버스 렌더링
+ * 밸런스 값은 data.js의 [임시]·[미확인] 항목을 따른다.
  */
 let st;
 const $ = id => document.getElementById(id);
 const log = t => { $('msg').textContent = t; };
 const col = i => i % GRID;
 
+// ---- 등각 좌표 ----
+const TW = 56, TH = 28;   // 타일 가로·세로 크기
+const OX = 210, OY = 70;  // 맵 원점 (캔버스 좌표)
+const canvas = $('board');
+const ctx = canvas.getContext('2d');
+
+function tileXY(r, c) {
+  return { x: OX + (c - r) * TW / 2, y: OY + (c + r) * TH / 2 };
+}
+
+// 클릭 좌표 → 격자 인덱스 (범위 밖이면 -1)
+function pickTile(e) {
+  const rect = canvas.getBoundingClientRect();
+  const px = (e.clientX - rect.left) * canvas.width / rect.width;
+  const py = (e.clientY - rect.top) * canvas.height / rect.height;
+  const a = (px - OX) / (TW / 2);
+  const b = (py - OY) / (TH / 2);
+  const c = Math.round((a + b) / 2);
+  const r = Math.round((b - a) / 2);
+  if (r < 0 || r >= GRID || c < 0 || c >= GRID) return -1;
+  return r * GRID + c;
+}
+
+// ---- 게임 로직 ----
 function capacity() {
   return st.grid.reduce((s, b) => (b && b.type === 'barracks') ? s + BLD.barracks.lv[b.lv].cap : s, 0);
 }
@@ -35,7 +60,7 @@ function init() {
 function pick(k) { st.sel = k; render(); }
 
 function tileClick(i) {
-  if (st.over || i === CASTLE) return;
+  if (st.over || i < 0 || i === CASTLE) return;
   const b = st.grid[i];
   if (b) { upgrade(b); return; }
   const def = BLD[st.sel];
@@ -122,25 +147,70 @@ function night() {
   log(report + ` → ${st.day}일차 낮이 밝았습니다.`);
 }
 
+// ---- 화면 그리기 ----
+function drawTile(r, c, fill) {
+  const { x, y } = tileXY(r, c);
+  ctx.beginPath();
+  ctx.moveTo(x, y - TH / 2);
+  ctx.lineTo(x + TW / 2, y);
+  ctx.lineTo(x, y + TH / 2);
+  ctx.lineTo(x - TW / 2, y);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = '#2a1f10';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
 function render() {
-  const g = $('grid');
-  g.innerHTML = '';
-  st.grid.forEach((b, i) => {
-    const d = document.createElement('div');
-    d.className = 'cell';
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 뒤쪽 타일부터 그려서 앞쪽 건물이 가려지지 않게 함
+  const order = [];
+  for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) order.push([r, c]);
+  order.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]));
+
+  for (const [r, c] of order) {
+    const i = r * GRID + c;
+    const { x, y } = tileXY(r, c);
+    drawTile(r, c, i === CASTLE ? '#7a6a4a' : ((r + c) % 2 ? '#5b7a3c' : '#587536'));
+
+    let emoji = null, hp = 0, max = 1;
     if (i === CASTLE) {
-      d.innerHTML = `🏰<span class="hp">${st.castleHp}</span>`;
-    } else if (b) {
-      d.innerHTML = `${BLD[b.type].i}<span class="hp">${b.hp}</span>`;
+      emoji = '🏰'; hp = st.castleHp; max = CASTLE_HP;
+    } else if (st.grid[i]) {
+      const b = st.grid[i];
+      emoji = BLD[b.type].i; hp = b.hp; max = BLD[b.type].lv[b.lv].hp;
     }
-    d.onclick = () => tileClick(i);
-    g.appendChild(d);
-  });
+    if (emoji) {
+      ctx.font = '22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(emoji, x, y + 4);
+      const w = 28;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x - w / 2, y + 3, w, 4);
+      ctx.fillStyle = '#6f6';
+      ctx.fillRect(x - w / 2, y + 3, w * Math.max(0, hp) / max, 4);
+    }
+  }
+
+  // 침입 방향 표시 (동쪽 = 맵 오른쪽)
+  const edge = tileXY(3, 6);
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffe9a8';
+  ctx.fillText('동쪽 침입 ▶', edge.x + 26, edge.y);
+
   $('status').innerHTML =
     `${st.day}일차 / ${WIN_DAY}일 · 골드 ${st.gold} · 왕성 ${st.castleHp}<br>` +
     `병사 ${st.soldiers}명 (상한 ${capacity()}) · 다음 밤 적 ${2 + st.day}명 [임시]`;
   document.querySelectorAll('#palette button').forEach(b => b.classList.toggle('on', b.dataset.b === st.sel));
   $('nightBtn').disabled = st.over;
 }
+
+canvas.addEventListener('click', e => tileClick(pickTile(e)));
 
 init();
