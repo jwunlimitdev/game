@@ -13,32 +13,22 @@
 <div id="grid"></div>
 
 <div class="row" id="palette">
-  <button data-b="farm" onclick="pick('farm')">🌾 농장 20G</button>
-  <button data-b="mine" onclick="pick('mine')">⛏️ 광산 25G</button>
-  <button data-b="barracks" onclick="pick('barracks')">🏹 병영 30G</button>
-  <button data-b="lab" onclick="pick('lab')">🧪 연구소 40G</button>
+  <button data-b="house" onclick="pick('house')">🏠 주택 2G</button>
+  <button data-b="mill" onclick="pick('mill')">⚙️ 제분소 3G</button>
+  <button data-b="mine" onclick="pick('mine')">⛏️ 금광 5G</button>
+  <button data-b="barracks" onclick="pick('barracks')">🏹 병영 4G</button>
+  <button data-b="tower" onclick="pick('tower')">🗼 방어탑 3G</button>
 </div>
 <div class="row">
-  <button onclick="recruit()">병사 모집 (10G)</button>
-  <button onclick="repair()">성벽 보수 (30G)</button>
-  <button onclick="research()">연구 진행</button>
+  <button onclick="recruit()">병사 모집 (5G)</button>
   <button id="nightBtn" class="night" onclick="night()">🌙 밤 맞이하기</button>
-</div>
-<div class="row">
-  <label>난이도
-    <select id="diff" onchange="init(this.value)">
-      <option value="easy">쉬움</option>
-      <option value="normal" selected>보통</option>
-      <option value="hard">어려움</option>
-    </select>
-  </label>
-  <button onclick="init($('diff').value)">새 게임</button>
 </div>
 
 <div id="help">
-  낮: 건물을 짓고(칸 클릭), 병사를 모집하고, 연구를 진행합니다. 농장은 식량, 광산은 골드를 줍니다.<br>
-  밤: 적의 습격을 받습니다. 병력이 적을 격퇴하고, 남은 적은 성벽을 공격합니다. 성벽이 무너지면 패배합니다.<br>
-  목표: 10일을 버텨 왕국을 지키세요. 경제에 투자하면 건물이 늘지만, 방어를 소홀히 하면 왕국이 위험해집니다.
+  낮: 빈 칸을 누르면 선택한 건물을 짓고, 건물을 누르면 업그레이드합니다. 병영이 있어야 병사를 모집할 수 있습니다.<br>
+  밤: 적이 동쪽에서 침입해 가장 가까운 건물부터 공격합니다. 방어탑과 병사가 적을 막으며, 왕성이 무너지면 패배합니다.<br>
+  목표: 10일을 버텨 왕국을 지키세요.<br>
+  <b>주의:</b> 건물의 건설 비용·체력·수입과 금광 감소는 제공된 자료 기준(확인됨)입니다. 적의 수, 피해량, 병사 수, 왕성 체력 등 나머지 밸런스 값은 임시이며 실제 Thronefall과 다릅니다.
 </div>
 
 <script src="data.js"></script>
