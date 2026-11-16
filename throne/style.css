@@ -3,10 +3,7 @@ body{margin:0;min-height:100vh;background:radial-gradient(#3b4a2e,#141a10);color
 h1{margin:6px 0;font-size:22px;letter-spacing:2px;color:#ffd36b}
 #status{font-size:13px;margin:4px 0;text-align:center;line-height:1.6}
 #msg{min-height:40px;font-size:14px;margin:6px 0;color:#ffe9a8;text-align:center;max-width:480px}
-#grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;width:min(92vw,400px);background:#2a1f10;padding:4px;border-radius:8px;box-shadow:0 0 20px #000}
-.cell{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#5b7a3c;font-size:clamp(18px,5vw,26px);cursor:pointer;border-radius:4px;user-select:none}
-.cell:hover{filter:brightness(1.15)}
-.hp{position:absolute;bottom:1px;right:3px;font-size:10px;color:#fff;text-shadow:0 0 2px #000}
+#board{width:min(94vw,420px);height:auto;aspect-ratio:420/270;cursor:pointer;background:#1c2612;border-radius:10px;box-shadow:0 0 20px #000;touch-action:manipulation}
 .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
 button{padding:9px 12px;font-size:14px;border:0;border-radius:8px;background:#c9a04a;color:#1a1208;font-weight:bold;cursor:pointer}
 button.on{background:#fff3c4;outline:2px solid #ffd36b}
